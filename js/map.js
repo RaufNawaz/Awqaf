@@ -5,6 +5,12 @@ const IS_COARSE_POINTER =
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&
   window.matchMedia("(pointer: coarse)").matches;
+const EMPTY_PANEL_METRICS = {
+  leftOccupied: 0,
+  rightOccupied: 0,
+  topOccupied: 0,
+  bottomOccupied: 0,
+};
 
 function createMarkerIcon({ selected = false, hover = false } = {}) {
   const classes = ["shrine-dot"];
@@ -37,22 +43,22 @@ function buildBaseLayers() {
 }
 
 function getVisiblePanelMetrics() {
-  const filtersPanel = document.getElementById("filtersPanel");
-  const detailPanel = document.getElementById("detailPanel");
-  const isDesktop = window.innerWidth > 980;
+  const sidebar = document.getElementById("sidebar");
+  const isMobile = window.innerWidth <= 520;
 
-  const leftOccupied =
-    filtersPanel && !filtersPanel.classList.contains("collapsed") ? filtersPanel.offsetWidth + 24 : 0;
-  const rightOccupied =
-    detailPanel && !detailPanel.classList.contains("hidden") ? detailPanel.offsetWidth + 24 : 0;
-  const topOccupied = !isDesktop && leftOccupied ? filtersPanel.offsetHeight + 24 : 0;
-  const bottomOccupied = !isDesktop && rightOccupied ? detailPanel.offsetHeight + 24 : 0;
+  if (!sidebar || sidebar.classList.contains("collapsed")) {
+    return EMPTY_PANEL_METRICS;
+  }
+
+  const sidebarWidth = sidebar.offsetWidth;
+  const sidebarHeight = sidebar.offsetHeight;
+  const panelGap = 24;
 
   return {
-    leftOccupied: isDesktop ? leftOccupied : 0,
-    rightOccupied: isDesktop ? rightOccupied : 0,
-    topOccupied,
-    bottomOccupied,
+    leftOccupied: 0,
+    rightOccupied: isMobile ? 0 : sidebarWidth + panelGap,
+    topOccupied: isMobile ? sidebarHeight + panelGap : 0,
+    bottomOccupied: 0,
   };
 }
 
@@ -131,7 +137,7 @@ export function createShrineMap({ onSelect, onMapClick }) {
       });
 
       marker.on("click", () => {
-        onSelect(row.id, { source: "marker" });
+        onSelect(row.id);
       });
 
       marker.addTo(markerLayer);

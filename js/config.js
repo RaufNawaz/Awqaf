@@ -1,16 +1,23 @@
 export const APP_CONFIG = {
-  title: "Awqaf Mosque Map",
-  subtitle: "Mapped locations from the Adil Final sheet.",
+  title: "Awqaf Directory",
   dataSource: {
-    // The uploaded workbook did not expose a Google Sheet ID, so this stays blank
-    // until you paste the public spreadsheet ID here.
+    // This stays blank because the app is using the sheet's published CSV URL below.
     spreadsheetId: "",
-    gid: "2033055474",
-    sheetName: "Adil Final",
+    gid: "0",
     // Optional published-to-web CSV URL. If you use this, it overrides spreadsheetId.
-    publishedCsvUrl: "",
-    // The app falls back to this bundled snapshot when a live sheet URL is unavailable.
-    fallbackCsvPath: "./data/adil-final.csv",
+    publishedCsvUrl:
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzVlDrUr-dFWeLl2lzJhuMZ9h98xNWyZ9yt3o2eIgt-YEObRl1FQJ4IDKWpV0hiQo9ISs8qggVIh1E/pub?output=csv",
+  },
+  drivePhotos: {
+    enabled: true,
+    folderId: "15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo",
+    // Free workaround: deploy the Apps Script from README.md and paste its /exec URL here.
+    appsScriptUrl:
+      "https://script.google.com/macros/s/AKfycbzFG5vI4WSQNIHomz-QVfQ3rJpbIkdqhEfKHqHz0kJ6YBr80_ZleW9ROzNl7Km610KxJw/exec",
+    // Optional Google Drive API fallback. Restrict this key to the Google Drive API
+    // and your website domain in Google Cloud if you choose to use it.
+    apiKey: "",
+    thumbnailSize: "w1600",
   },
   map: {
     defaultCenter: [30.3753, 69.3451],
@@ -43,7 +50,8 @@ export const APP_CONFIG = {
       },
       {
         label: "Voyager (CARTO)",
-        tileUrl: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        tileUrl:
+          "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
         options: {
           subdomains: "abcd",
           maxZoom: 20,
@@ -73,6 +81,8 @@ export const APP_CONFIG = {
   },
   columns: {
     zone: ["Zone"],
+    city: ["City", "city", "Town", "Tehsil"],
+    address: ["Address", "address", "Location Address", "Mosque Address"],
     mosqueId: ["Mosque ID"],
     mosqueName: ["Mosque Name"],
     treatmentName: ["Treatment Name"],
@@ -80,7 +90,10 @@ export const APP_CONFIG = {
     imamName: ["Imam Name"],
     mosqueBuiltDate: ["Mosque Built Date"],
     shrineName: ["Shrine Name"],
-    womensPrayerSection: ["Women\u2019s prayer section", "Women's prayer section"],
+    womensPrayerSection: [
+      "Women\u2019s prayer section",
+      "Women's prayer section",
+    ],
     ruralUrban: ["Rural = 1 / Urban = 2"],
     whatsappLocation: ["WhatsApp Location"],
     latitude: ["Latitude"],
@@ -95,7 +108,7 @@ export const APP_CONFIG = {
 };
 
 export function buildPrimaryCsvUrl() {
-  const { publishedCsvUrl, spreadsheetId, gid, fallbackCsvPath } = APP_CONFIG.dataSource;
+  const { publishedCsvUrl, spreadsheetId, gid } = APP_CONFIG.dataSource;
 
   if (publishedCsvUrl) return publishedCsvUrl;
 
@@ -105,5 +118,5 @@ export function buildPrimaryCsvUrl() {
     )}/export?format=csv&gid=${encodeURIComponent(gid)}`;
   }
 
-  return fallbackCsvPath;
+  throw new Error("No live CSV source is configured.");
 }

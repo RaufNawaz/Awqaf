@@ -1,10 +1,21 @@
+const BLANK_VALUES = new Set([
+  "",
+  "not found",
+  "form not found",
+  "n/a",
+  "na",
+  "null",
+  "undefined",
+  "end",
+]);
+
 export function toTrimmedString(value) {
   return String(value ?? "").trim();
 }
 
 export function isBlankValue(value) {
   const normalized = toTrimmedString(value).toLowerCase();
-  return !normalized || ["not found", "form not found", "n/a", "na", "null", "undefined", "end"].includes(normalized);
+  return BLANK_VALUES.has(normalized);
 }
 
 export function cleanCellValue(value) {
@@ -23,6 +34,21 @@ export function normalizeSearchText(value) {
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
+}
+
+export function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+export function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
 
 export function parseCoordinate(value) {
@@ -61,6 +87,7 @@ export function normalizeUrl(rawUrl) {
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
   if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
+  if (isLocalImagePath(trimmed)) return trimmed;
   return `https://${trimmed.replace(/^\/+/, "")}`;
 }
 
@@ -68,7 +95,16 @@ export function extractUrls(value) {
   const raw = toTrimmedString(value);
   if (!raw) return [];
 
-  const matches = raw.match(/(?:https?:\/\/|www\.)[^\s,]+/gi) || [];
+  const entries = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const matches = entries.flatMap((entry) => {
+    const urls = entry.match(/(?:https?:\/\/|www\.)[^\s,]+/gi) || [];
+    if (urls.length) return urls;
+    return isLocalImagePath(entry) ? [entry] : [];
+  });
+
   return Array.from(
     new Set(
       matches
@@ -76,6 +112,15 @@ export function extractUrls(value) {
         .filter(Boolean),
     ),
   );
+}
+
+export function isLocalImagePath(value) {
+  const trimmed = toTrimmedString(value);
+  if (!trimmed || /^[a-z][a-z0-9+.-]*:/i.test(trimmed) || /^\/\//.test(trimmed)) {
+    return false;
+  }
+
+  return /(?:^|\/)[^?#]+\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg)(?:[?#].*)?$/i.test(trimmed);
 }
 
 export function getGoogleDriveFileId(url) {
@@ -122,7 +167,13 @@ export function pickFirstValue(row, candidateHeaders) {
 }
 
 export function getDisplayTitle(row) {
-  return row.shrineName || row.mosqueName || row.mosqueNameOnGround || row.mosqueId || "Unnamed location";
+  return (
+    row.mosqueName ||
+    row.mosqueNameOnGround ||
+    row.shrineName ||
+    row.mosqueId ||
+    "Unnamed mosque"
+  );
 }
 
 export function joinBits(parts) {

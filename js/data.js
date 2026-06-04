@@ -1,5 +1,9 @@
 import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js";
 import {
+  findDrivePhotosForRow,
+  loadDrivePhotoIndex,
+} from "./drive-photos.js";
+import {
   cleanCellValue,
   cleanYearLikeValue,
   extractUrls,
@@ -55,6 +59,8 @@ function normalizeRow(rawRow, index) {
   }
 
   const zone = pickFirstValue(row, columns.zone);
+  const city = pickFirstValue(row, columns.city);
+  const address = pickFirstValue(row, columns.address);
   const mosqueId = pickFirstValue(row, columns.mosqueId);
   const mosqueName = pickFirstValue(row, columns.mosqueName);
   const treatmentName = pickFirstValue(row, columns.treatmentName);
@@ -88,6 +94,8 @@ function normalizeRow(rawRow, index) {
     id: `${mosqueId || "row"}-${index}`,
     index,
     zone,
+    city,
+    address,
     mosqueId,
     mosqueName,
     treatmentName,
@@ -107,6 +115,7 @@ function normalizeRow(rawRow, index) {
       longitude: closestMosqueLongitude,
       coordinatesLabel: formatCoordinatePair(closestMosqueLatitude, closestMosqueLongitude),
     },
+    drivePhotos: [],
     insidePhotos: buildPhotoEntries(pickFirstValue(row, columns.photoInside)),
     outsidePhotos: buildPhotoEntries(pickFirstValue(row, columns.photoOutside)),
     comments,
@@ -127,11 +136,21 @@ function normalizeRow(rawRow, index) {
       normalized.mosqueNameOnGround,
       normalized.imamName,
       normalized.zone,
+      normalized.city,
+      normalized.address,
       normalized.mosqueId,
     ].join(" "),
   );
 
   return normalized;
+}
+
+async function attachDrivePhotos(rows) {
+  const drivePhotoIndex = await loadDrivePhotoIndex();
+
+  rows.forEach((row) => {
+    row.drivePhotos = findDrivePhotosForRow(row, drivePhotoIndex);
+  });
 }
 
 function parseCsv(url) {
@@ -158,34 +177,24 @@ function parseCsv(url) {
 }
 
 export async function loadShrineRows() {
-  const primaryUrl = buildPrimaryCsvUrl();
-  const fallbackUrl = APP_CONFIG.dataSource.fallbackCsvPath;
-  const usingConfiguredFallback = primaryUrl === fallbackUrl;
-
   let rawRows;
-  let sourceLabel = usingConfiguredFallback ? "snapshot" : "google-sheet";
-  let warningMessage = "";
 
   try {
-    rawRows = await parseCsv(primaryUrl);
+    rawRows = await parseCsv(buildPrimaryCsvUrl());
   } catch (error) {
-    if (usingConfiguredFallback) {
-      throw error;
-    }
-
-    rawRows = await parseCsv(fallbackUrl);
-    sourceLabel = "snapshot";
-    warningMessage =
-      "The live Google Sheet could not be loaded, so the app is using the bundled Adil Final snapshot instead.";
+    throw new Error(
+      `The live published Google Sheet could not be loaded. ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
   }
 
   const rows = rawRows
     .map((row, index) => normalizeRow(row, index))
     .filter(Boolean);
+  await attachDrivePhotos(rows);
 
   return {
     rows,
-    sourceLabel,
-    warningMessage,
   };
 }
