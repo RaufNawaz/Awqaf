@@ -8,7 +8,7 @@ const NAMED_TYPED_PHOTO_RE =
 const LEGACY_NAMED_PHOTO_RE =
   /^(.+)_([0-9]+)(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
 const APPS_SCRIPT_TIMEOUT_MS = 10000;
-const DRIVE_FILES_CACHE_KEY = "awqaf-drive-photo-files-v1";
+const DRIVE_FILES_CACHE_KEY = "awqaf-drive-photo-files-v2";
 const DRIVE_FILES_CACHE_TTL_MS = 5 * 60 * 1000;
 const PHOTO_TYPE_SORT_ORDER = {
   main: 0,
@@ -203,6 +203,7 @@ function loadAppsScriptFiles(appsScriptUrl) {
   return new Promise((resolve, reject) => {
     const callbackName = `__awqafDrivePhotos${Date.now()}_${jsonpRequestCount}`;
     jsonpRequestCount += 1;
+    let didReceivePayload = false;
 
     const script = document.createElement("script");
     script.src = buildAppsScriptUrl({ appsScriptUrl, callbackName });
@@ -219,10 +220,21 @@ function loadAppsScriptFiles(appsScriptUrl) {
     }, APPS_SCRIPT_TIMEOUT_MS);
 
     window[callbackName] = (payload) => {
+      didReceivePayload = true;
       window.clearTimeout(timeoutId);
       cleanup();
       resolve(Array.isArray(payload) ? payload : payload?.files || []);
     };
+
+    script.addEventListener("load", () => {
+      window.setTimeout(() => {
+        if (didReceivePayload) return;
+
+        window.clearTimeout(timeoutId);
+        cleanup();
+        reject(new Error("Apps Script photo list did not return valid JSONP."));
+      }, 0);
+    });
 
     script.addEventListener("error", () => {
       window.clearTimeout(timeoutId);
@@ -325,7 +337,19 @@ function buildPhotoIndex(files) {
   });
 
   groupedPhotos.forEach(({ modern, legacy }, key) => {
-    const photos = modern.length ? modern : legacy;
+    const hasModernMain = modern.some((photo) => photo.type === "main");
+    const legacyExtras = hasModernMain
+      ? legacy.filter((photo) => !(photo.type === "main" && photo.index === 0))
+      : legacy;
+    const photos = modern.length
+      ? [
+          ...modern,
+          ...legacyExtras.map((photo) => ({
+            ...photo,
+            sortOrder: PHOTO_TYPE_SORT_ORDER.legacy,
+          })),
+        ]
+      : legacy;
     if (!photos.length) return;
 
     photos.sort(comparePhotoEntries);

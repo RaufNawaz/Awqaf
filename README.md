@@ -102,7 +102,7 @@ MosqueName_1.jpg
 MosqueName_2.jpg
 ```
 
-For each mosque, the site uses the new `_M` / `_I_#` / `_O_#` photos when it finds them. If it does not find any new-format photos for that mosque, it falls back to the older numbered files.
+For each mosque, the site shows the new `_M` / `_I_#` / `_O_#` photos first. Older numbered files are still accepted as fallback gallery photos, so a mixed set like `MosqueName_M.jpg` plus `MosqueName_1.jpg` will still display.
 
 ### Free setup with Apps Script
 
@@ -115,6 +115,7 @@ This is the recommended free workaround. It avoids a Google Cloud API key in the
 const FOLDER_ID = "15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo";
 const CACHE_KEY = "awqaf-photo-list";
 const CACHE_SECONDS = 300;
+const CACHE_MAX_CHARS = 90000;
 
 function doGet(e) {
   const callback = String(e.parameter.callback || "");
@@ -163,7 +164,15 @@ function getPhotoPayload() {
     files,
   };
 
-  cache.put(CACHE_KEY, JSON.stringify(payload), CACHE_SECONDS);
+  const json = JSON.stringify(payload);
+  if (json.length <= CACHE_MAX_CHARS) {
+    try {
+      cache.put(CACHE_KEY, json, CACHE_SECONDS);
+    } catch (error) {
+      console.warn("Photo list cache skipped:", error);
+    }
+  }
+
   return payload;
 }
 ```
