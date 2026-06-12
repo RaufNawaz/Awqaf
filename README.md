@@ -119,7 +119,8 @@ const CACHE_MAX_CHARS = 90000;
 
 function doGet(e) {
   const callback = String(e.parameter.callback || "");
-  const payload = getPhotoPayload();
+  const query = String(e.parameter.q || "");
+  const payload = getPhotoPayload(query);
   const json = JSON.stringify(payload);
 
   if (/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) {
@@ -133,9 +134,11 @@ function doGet(e) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function getPhotoPayload() {
+function getPhotoPayload(query) {
+  const normalizedQueries = normalizeQueryList(query);
+  const shouldUseCache = normalizedQueries.length === 0;
   const cache = CacheService.getScriptCache();
-  const cached = cache.get(CACHE_KEY);
+  const cached = shouldUseCache ? cache.get(CACHE_KEY) : "";
   if (cached) return JSON.parse(cached);
 
   const folder = DriveApp.getFolderById(FOLDER_ID);
@@ -151,6 +154,14 @@ function getPhotoPayload() {
       continue;
     }
 
+    const normalizedName = normalizePhotoSearchText(name);
+    if (
+      normalizedQueries.length &&
+      !normalizedQueries.some((normalizedQuery) => normalizedName.includes(normalizedQuery))
+    ) {
+      continue;
+    }
+
     files.push({
       id: file.getId(),
       name,
@@ -161,11 +172,12 @@ function getPhotoPayload() {
 
   const payload = {
     generatedAt: new Date().toISOString(),
+    query,
     files,
   };
 
   const json = JSON.stringify(payload);
-  if (json.length <= CACHE_MAX_CHARS) {
+  if (shouldUseCache && json.length <= CACHE_MAX_CHARS) {
     try {
       cache.put(CACHE_KEY, json, CACHE_SECONDS);
     } catch (error) {
@@ -174,6 +186,21 @@ function getPhotoPayload() {
   }
 
   return payload;
+}
+
+function normalizeQueryList(query) {
+  return String(query || "")
+    .split("|")
+    .map(normalizePhotoSearchText)
+    .filter(Boolean);
+}
+
+function normalizePhotoSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 ```
 

@@ -1,5 +1,5 @@
-import { APP_CONFIG } from "./config.js";
-import { cleanCellValue, normalizeSearchText } from "./utils.js";
+import { APP_CONFIG } from "./config.js?v=photos-20260612";
+import { cleanCellValue, normalizeSearchText } from "./utils.js?v=photos-20260612";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|heic|heif|jpe?g|png|webp|svg)$/i;
 const NAMED_MAIN_PHOTO_RE = /^(.+)_M(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
@@ -8,7 +8,7 @@ const NAMED_TYPED_PHOTO_RE =
 const LEGACY_NAMED_PHOTO_RE =
   /^(.+)_([0-9]+)(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
 const APPS_SCRIPT_TIMEOUT_MS = 10000;
-const DRIVE_FILES_CACHE_KEY = "awqaf-drive-photo-files-v2";
+const DRIVE_FILES_CACHE_KEY = "awqaf-drive-photo-files-v3";
 const DRIVE_FILES_CACHE_TTL_MS = 5 * 60 * 1000;
 const PHOTO_TYPE_SORT_ORDER = {
   main: 0,
@@ -193,20 +193,45 @@ function buildDriveApiUrl({ folderId, apiKey, pageToken = "" }) {
   return `https://www.googleapis.com/drive/v3/files?${params.toString()}`;
 }
 
-function buildAppsScriptUrl({ appsScriptUrl, callbackName }) {
+function buildAppsScriptUrl({ appsScriptUrl, callbackName, query = "" }) {
   const url = new URL(appsScriptUrl);
   url.searchParams.set("callback", callbackName);
+  if (query) {
+    url.searchParams.set("q", query);
+  }
   return url.toString();
 }
 
-function loadAppsScriptFiles(appsScriptUrl) {
+function buildAppsScriptJsonUrl({ appsScriptUrl, query = "" }) {
+  const url = new URL(appsScriptUrl);
+  url.searchParams.delete("callback");
+  if (query) {
+    url.searchParams.set("q", query);
+  }
+  return url.toString();
+}
+
+async function fetchAppsScriptFiles(appsScriptUrl, { query = "" } = {}) {
+  const response = await fetch(buildAppsScriptJsonUrl({ appsScriptUrl, query }), {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Apps Script photo list failed with HTTP ${response.status}.`);
+  }
+
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : payload?.files || [];
+}
+
+function loadAppsScriptFiles(appsScriptUrl, { query = "" } = {}) {
   return new Promise((resolve, reject) => {
     const callbackName = `__awqafDrivePhotos${Date.now()}_${jsonpRequestCount}`;
     jsonpRequestCount += 1;
     let didReceivePayload = false;
 
     const script = document.createElement("script");
-    script.src = buildAppsScriptUrl({ appsScriptUrl, callbackName });
+    script.src = buildAppsScriptUrl({ appsScriptUrl, callbackName, query });
     script.async = true;
 
     const cleanup = () => {
@@ -246,18 +271,26 @@ function loadAppsScriptFiles(appsScriptUrl) {
   });
 }
 
-async function fetchDriveFiles() {
+async function fetchDriveFiles({ query = "" } = {}) {
   const { apiKey, appsScriptUrl, folderId } = APP_CONFIG.drivePhotos || {};
 
   if (appsScriptUrl) {
     try {
-      return await loadAppsScriptFiles(appsScriptUrl);
-    } catch (error) {
-      if (!apiKey || !folderId) {
-        throw error;
-      }
+      return await fetchAppsScriptFiles(appsScriptUrl, { query });
+    } catch (fetchError) {
+      try {
+        return await loadAppsScriptFiles(appsScriptUrl, { query });
+      } catch (jsonpError) {
+        if (!apiKey || !folderId) {
+          throw fetchError;
+        }
 
-      console.warn("Apps Script photo list failed, trying the Drive API fallback.", error);
+        console.warn(
+          "Apps Script photo list failed, trying the Drive API fallback.",
+          fetchError,
+          jsonpError,
+        );
+      }
     }
   }
 
@@ -366,6 +399,16 @@ export function normalizePhotoMosqueName(value) {
     .trim();
 }
 
+function getPhotoMatchCandidates(row) {
+  return [
+    row.title,
+    row.mosqueName,
+    row.mosqueNameOnGround,
+    row.shrineName,
+    row.mosqueId,
+  ];
+}
+
 export async function loadDrivePhotoIndex() {
   if (APP_CONFIG.drivePhotos?.enabled === false) {
     return new Map();
@@ -397,13 +440,7 @@ export function findDrivePhotosForRow(row, drivePhotoIndex) {
     return [];
   }
 
-  const candidates = [
-    row.title,
-    row.mosqueName,
-    row.mosqueNameOnGround,
-    row.shrineName,
-    row.mosqueId,
-  ];
+  const candidates = getPhotoMatchCandidates(row);
   const seen = new Set();
 
   for (const candidate of candidates) {
@@ -418,6 +455,36 @@ export function findDrivePhotosForRow(row, drivePhotoIndex) {
   }
 
   return [];
+}
+
+export async function loadDrivePhotosForRow(row) {
+  if (APP_CONFIG.drivePhotos?.enabled === false) {
+    return [];
+  }
+
+  const cachedFiles = readCachedDriveFiles();
+  if (cachedFiles) {
+    const cachedPhotos = findDrivePhotosForRow(row, buildPhotoIndex(cachedFiles));
+    if (cachedPhotos.length) {
+      return cachedPhotos;
+    }
+  }
+
+  const query = getPhotoMatchCandidates(row)
+    .map((candidate) => cleanCellValue(candidate))
+    .filter(Boolean)
+    .join("|");
+
+  if (!query) {
+    return [];
+  }
+
+  try {
+    return findDrivePhotosForRow(row, buildPhotoIndex(await fetchDriveFiles({ query })));
+  } catch (error) {
+    console.warn("Google Drive photos could not be loaded for this row.", error);
+    return [];
+  }
 }
 
 export function formatDrivePhotoLabel(photo, fallbackPosition = 0) {

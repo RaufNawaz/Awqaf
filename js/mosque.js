@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js";
-import { loadDrivePhotosForRows, loadShrineRows } from "./data.js";
-import { formatDrivePhotoLabel } from "./drive-photos.js";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js";
+import { APP_CONFIG } from "./config.js?v=photos-20260612";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260612";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260612";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260612";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -39,6 +39,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
+const PAGE_VERSION_QUERY = "v=photos-20260612";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -68,7 +69,7 @@ function getCityLabel(row) {
 }
 
 function getMapPageUrl(row) {
-  return `./index.html?id=${encodeURIComponent(row.id)}`;
+  return `./index.html?id=${encodeURIComponent(row.id)}&${PAGE_VERSION_QUERY}`;
 }
 
 function getOnSiteName(row) {
@@ -120,7 +121,7 @@ function getAddressLabel(row) {
 }
 
 function getMosquePageUrl(row) {
-  return `./mosque.html?id=${encodeURIComponent(row.id)}`;
+  return `./mosque.html?id=${encodeURIComponent(row.id)}&${PAGE_VERSION_QUERY}`;
 }
 
 function buildDirectionsUrl(lat, lng) {
@@ -509,7 +510,7 @@ function renderPage(rows, row) {
         <a class="mosque-toolbar-link" href="${escapeHtml(
           getMapPageUrl(row),
         )}">${escapeHtml(UI_TEXT.backToDirectory)}</a>
-        <a class="mosque-toolbar-link mosque-toolbar-link-muted" href="./index.html">${escapeHtml(
+        <a class="mosque-toolbar-link mosque-toolbar-link-muted" href="./index.html?${PAGE_VERSION_QUERY}">${escapeHtml(
           UI_TEXT.browseMap,
         )}</a>
       </div>
@@ -638,7 +639,7 @@ function renderMessage(title, message) {
   pageEl.innerHTML = `
     <div class="mosque-shell">
       <div class="mosque-toolbar">
-        <a class="mosque-toolbar-link" href="./index.html">${escapeHtml(
+        <a class="mosque-toolbar-link" href="./index.html?${PAGE_VERSION_QUERY}">${escapeHtml(
           UI_TEXT.backToDirectory,
         )}</a>
       </div>
@@ -649,38 +650,6 @@ function renderMessage(title, message) {
       </section>
     </div>
   `;
-}
-
-async function loadPhotosAfterInitialRender(rows, rowId) {
-  const row = rows.find((item) => item.id === rowId);
-  const initialDrivePhotoCount = row?.drivePhotos?.length || 0;
-
-  try {
-    await loadDrivePhotosForRows(rows);
-  } catch (error) {
-    console.warn("Google Drive photos could not be loaded after initial render.", error);
-    return;
-  }
-
-  const updatedRow = rows.find((item) => item.id === rowId);
-  const updatedDrivePhotoCount = updatedRow?.drivePhotos?.length || 0;
-
-  if (updatedRow && updatedDrivePhotoCount !== initialDrivePhotoCount) {
-    renderPage(rows, updatedRow);
-  }
-}
-
-function schedulePhotoLoad(rows, rowId) {
-  const loadPhotos = () => {
-    void loadPhotosAfterInitialRender(rows, rowId);
-  };
-
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(loadPhotos, { timeout: 1500 });
-    return;
-  }
-
-  window.setTimeout(loadPhotos, 0);
 }
 
 async function init() {
@@ -703,8 +672,13 @@ async function init() {
       return;
     }
 
+    try {
+      await loadDrivePhotosForRow(row);
+    } catch (error) {
+      console.warn("Google Drive photos could not be loaded before initial render.", error);
+    }
+
     renderPage(rows, row);
-    schedulePhotoLoad(rows, requestedRowId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     renderMessage(UI_TEXT.failedTitle, `${UI_TEXT.failedPrefix} ${message}`);

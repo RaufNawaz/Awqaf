@@ -11,9 +11,9 @@ export const APP_CONFIG = {
   drivePhotos: {
     enabled: true,
     folderId: "15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo",
-    // Free workaround: deploy the Apps Script from README.md and paste its /exec URL here.
+    // Free workaround: deploy the Apps Script from README.md and paste its JSON URL here.
     appsScriptUrl:
-      "https://script.google.com/macros/s/AKfycbzFG5vI4WSQNIHomz-QVfQ3rJpbIkdqhEfKHqHz0kJ6YBr80_ZleW9ROzNl7Km610KxJw/exec",
+      "https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQiDLGl7D1CHZw5lNOslN7cveZmy08l_FVVJv_xetYhyUgZohHMaKwpKKTGwvbB4puELDAmigTkDp-gGjYglTOvkMxn2PrIRC_euJwvjaL6wWFFli08TD3pZJ4Zx_aRCwipuGtHrsvLejlMTz7kRYuOKIu_w7Ux00YpuF9D2OBWoO7BQa_GhdGeeX-vdoQFGibwNFrABMcEVPujYGY13YcQhF22nThKA4dnsRxvRPbrwLrK0eQ972WEg3sy6OYMk_6ogz1OakZp6NAkVKVQ6_AA5aFTdg&lib=MpWdW5Xnf2iro3L6DlvNqqeSOIo3kG7Kb",
     // Optional Google Drive API fallback. Restrict this key to the Google Drive API
     // and your website domain in Google Cloud if you choose to use it.
     apiKey: "",

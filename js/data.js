@@ -1,8 +1,9 @@
-import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js";
+import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=photos-20260612";
 import {
   findDrivePhotosForRow,
+  loadDrivePhotosForRow as fetchDrivePhotosForRow,
   loadDrivePhotoIndex,
-} from "./drive-photos.js";
+} from "./drive-photos.js?v=photos-20260612";
 import {
   cleanCellValue,
   cleanYearLikeValue,
@@ -18,7 +19,7 @@ import {
   parseRuralUrbanLabel,
   parseWomenPrayerLabel,
   pickFirstValue,
-} from "./utils.js";
+} from "./utils.js?v=photos-20260612";
 
 function normalizeRawRow(rawRow) {
   const normalized = {};
@@ -151,6 +152,11 @@ export async function loadDrivePhotosForRows(rows) {
   });
 
   return rows;
+}
+
+export async function loadDrivePhotosForRow(row) {
+  row.drivePhotos = await fetchDrivePhotosForRow(row);
+  return row.drivePhotos;
 }
 
 function parseCsv(url) {

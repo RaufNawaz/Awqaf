@@ -1,8 +1,8 @@
-import { APP_CONFIG } from "./config.js";
-import { loadDrivePhotosForRows, loadShrineRows } from "./data.js";
-import { formatDrivePhotoLabel } from "./drive-photos.js";
-import { createShrineMap } from "./map.js";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js";
+import { APP_CONFIG } from "./config.js?v=photos-20260612";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260612";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260612";
+import { createShrineMap } from "./map.js?v=photos-20260612";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260612";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -15,6 +15,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
+const PAGE_VERSION_QUERY = "v=photos-20260612";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -137,7 +138,7 @@ function setCurrentMapRowId(rowId = "") {
 }
 
 function getMosquePageUrl(row) {
-  return `./mosque.html?id=${encodeURIComponent(row.id)}`;
+  return `./mosque.html?id=${encodeURIComponent(row.id)}&${PAGE_VERSION_QUERY}`;
 }
 
 function getMosqueGalleryUrl(row) {
@@ -418,6 +419,7 @@ function selectRow(rowId, { shouldFocusMap = true } = {}) {
   setCurrentMapRowId(rowId);
   shrineMap.setSelected(rowId);
   renderDetails(row);
+  schedulePhotoLoad(rowId);
   openSidebar();
   hideTablePanel();
 
@@ -629,29 +631,34 @@ function bindSidebarEvents() {
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
 }
 
-async function loadPhotosAfterInitialRender() {
-  if (!state.rows.length) return;
+async function loadPhotosForRow(rowId) {
+  const row = getRowById(rowId);
+  if (!row || row.drivePhotosState === "loaded" || row.drivePhotosState === "loading") {
+    return;
+  }
 
   const directoryStatus = getDirectoryStatus();
+  row.drivePhotosState = "loading";
   setStatus(`${directoryStatus} ${UI_TEXT.loadingPhotos}`);
 
   try {
-    await loadDrivePhotosForRows(state.rows);
+    await loadDrivePhotosForRow(row);
+    row.drivePhotosState = "loaded";
 
-    const selectedRow = getRowById(state.selectedId);
-    if (selectedRow) {
-      renderDetails(selectedRow);
+    if (state.selectedId === rowId) {
+      renderDetails(row);
     }
   } catch (error) {
-    console.warn("Google Drive photos could not be loaded after initial render.", error);
+    row.drivePhotosState = "failed";
+    console.warn("Google Drive photos could not be loaded for this mosque.", error);
   } finally {
     setStatus(directoryStatus);
   }
 }
 
-function schedulePhotoLoad() {
+function schedulePhotoLoad(rowId) {
   const loadPhotos = () => {
-    void loadPhotosAfterInitialRender();
+    void loadPhotosForRow(rowId);
   };
 
   if (typeof window.requestIdleCallback === "function") {
@@ -713,8 +720,6 @@ async function init() {
       clearDetails();
       collapseSidebar();
     }
-
-    schedulePhotoLoad();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(`Failed to load mosque data. ${message}`);
