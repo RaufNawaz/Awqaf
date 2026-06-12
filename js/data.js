@@ -20,8 +20,6 @@ import {
   pickFirstValue,
 } from "./utils.js";
 
-const Papa = window.Papa;
-
 function normalizeRawRow(rawRow) {
   const normalized = {};
 
@@ -145,15 +143,19 @@ function normalizeRow(rawRow, index) {
   return normalized;
 }
 
-async function attachDrivePhotos(rows) {
+export async function loadDrivePhotosForRows(rows) {
   const drivePhotoIndex = await loadDrivePhotoIndex();
 
   rows.forEach((row) => {
     row.drivePhotos = findDrivePhotosForRow(row, drivePhotoIndex);
   });
+
+  return rows;
 }
 
 function parseCsv(url) {
+  const Papa = window.Papa;
+
   if (!Papa) {
     return Promise.reject(new Error("Papa Parse failed to load."));
   }
@@ -176,7 +178,7 @@ function parseCsv(url) {
   });
 }
 
-export async function loadShrineRows() {
+export async function loadShrineRows({ includeDrivePhotos = true } = {}) {
   let rawRows;
 
   try {
@@ -192,7 +194,10 @@ export async function loadShrineRows() {
   const rows = rawRows
     .map((row, index) => normalizeRow(row, index))
     .filter(Boolean);
-  await attachDrivePhotos(rows);
+
+  if (includeDrivePhotos) {
+    await loadDrivePhotosForRows(rows);
+  }
 
   return {
     rows,

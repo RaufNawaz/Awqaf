@@ -1,5 +1,5 @@
 import { APP_CONFIG } from "./config.js";
-import { loadShrineRows } from "./data.js";
+import { loadDrivePhotosForRows, loadShrineRows } from "./data.js";
 import { formatDrivePhotoLabel } from "./drive-photos.js";
 import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js";
 
@@ -651,6 +651,38 @@ function renderMessage(title, message) {
   `;
 }
 
+async function loadPhotosAfterInitialRender(rows, rowId) {
+  const row = rows.find((item) => item.id === rowId);
+  const initialDrivePhotoCount = row?.drivePhotos?.length || 0;
+
+  try {
+    await loadDrivePhotosForRows(rows);
+  } catch (error) {
+    console.warn("Google Drive photos could not be loaded after initial render.", error);
+    return;
+  }
+
+  const updatedRow = rows.find((item) => item.id === rowId);
+  const updatedDrivePhotoCount = updatedRow?.drivePhotos?.length || 0;
+
+  if (updatedRow && updatedDrivePhotoCount !== initialDrivePhotoCount) {
+    renderPage(rows, updatedRow);
+  }
+}
+
+function schedulePhotoLoad(rows, rowId) {
+  const loadPhotos = () => {
+    void loadPhotosAfterInitialRender(rows, rowId);
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(loadPhotos, { timeout: 1500 });
+    return;
+  }
+
+  window.setTimeout(loadPhotos, 0);
+}
+
 async function init() {
   pageEl.innerHTML = `<p class="muted">${escapeHtml(UI_TEXT.loading)}</p>`;
 
@@ -663,7 +695,7 @@ async function init() {
       return;
     }
 
-    const { rows } = await loadShrineRows();
+    const { rows } = await loadShrineRows({ includeDrivePhotos: false });
     const row = rows.find((item) => item.id === requestedRowId);
 
     if (!row) {
@@ -672,6 +704,7 @@ async function init() {
     }
 
     renderPage(rows, row);
+    schedulePhotoLoad(rows, requestedRowId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     renderMessage(UI_TEXT.failedTitle, `${UI_TEXT.failedPrefix} ${message}`);

@@ -1,13 +1,12 @@
 import { APP_CONFIG } from "./config.js";
-import { loadShrineRows } from "./data.js";
+import { loadDrivePhotosForRows, loadShrineRows } from "./data.js";
 import { formatDrivePhotoLabel } from "./drive-photos.js";
 import { createShrineMap } from "./map.js";
 import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js";
 
-const L = window.L;
-
 const UI_TEXT = {
   loading: "Loading mosque data...",
+  loadingPhotos: "Loading photos...",
   noSelection: "No mosque selected yet. Click a marker to view details.",
   directoryButton: "Awqaf Directory",
   searchPlaceholder: "Search mosques...",
@@ -111,6 +110,10 @@ function getMapLink(row) {
 
 function getDistrictCount(rows) {
   return new Set(rows.map((row) => getDistrictLabel(row))).size;
+}
+
+function getDirectoryStatus(rows = state.rows) {
+  return `${rows.length} mosques across ${getDistrictCount(rows)} districts.`;
 }
 
 function getRequestedRowId() {
@@ -553,6 +556,11 @@ function renderTableList(searchTerm = "") {
 }
 
 function buildTableControls() {
+  const L = window.L;
+  if (!L) {
+    throw new Error("Leaflet failed to load.");
+  }
+
   const TableControl = L.Control.extend({
     options: { position: "topleft" },
     onAdd: () => {
@@ -621,6 +629,39 @@ function bindSidebarEvents() {
   elements.sidebarToggle.addEventListener("click", toggleSidebar);
 }
 
+async function loadPhotosAfterInitialRender() {
+  if (!state.rows.length) return;
+
+  const directoryStatus = getDirectoryStatus();
+  setStatus(`${directoryStatus} ${UI_TEXT.loadingPhotos}`);
+
+  try {
+    await loadDrivePhotosForRows(state.rows);
+
+    const selectedRow = getRowById(state.selectedId);
+    if (selectedRow) {
+      renderDetails(selectedRow);
+    }
+  } catch (error) {
+    console.warn("Google Drive photos could not be loaded after initial render.", error);
+  } finally {
+    setStatus(directoryStatus);
+  }
+}
+
+function schedulePhotoLoad() {
+  const loadPhotos = () => {
+    void loadPhotosAfterInitialRender();
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(loadPhotos, { timeout: 1500 });
+    return;
+  }
+
+  window.setTimeout(loadPhotos, 0);
+}
+
 async function init() {
   setMapPanelTitle(APP_CONFIG.title);
   setStatus(UI_TEXT.loading);
@@ -649,7 +690,7 @@ async function init() {
 
     bindSidebarEvents();
 
-    const { rows } = await loadShrineRows();
+    const { rows } = await loadShrineRows({ includeDrivePhotos: false });
     state.rows = rows;
 
     if (!rows.length) {
@@ -663,7 +704,7 @@ async function init() {
     shrineMap.fitToRows(rows);
     buildTableControls();
     renderTableList("");
-    setStatus(`${rows.length} mosques across ${getDistrictCount(rows)} districts.`);
+    setStatus(getDirectoryStatus(rows));
 
     const requestedRowId = getRequestedRowId();
     if (requestedRowId && getRowById(requestedRowId)) {
@@ -672,6 +713,8 @@ async function init() {
       clearDetails();
       collapseSidebar();
     }
+
+    schedulePhotoLoad();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(`Failed to load mosque data. ${message}`);

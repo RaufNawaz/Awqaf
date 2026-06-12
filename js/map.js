@@ -1,6 +1,5 @@
 import { APP_CONFIG } from "./config.js";
 
-const L = window.L;
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&
@@ -12,7 +11,16 @@ const EMPTY_PANEL_METRICS = {
   bottomOccupied: 0,
 };
 
+function getLeaflet() {
+  if (!window.L) {
+    throw new Error("Leaflet failed to load.");
+  }
+
+  return window.L;
+}
+
 function createMarkerIcon({ selected = false, hover = false } = {}) {
+  const L = getLeaflet();
   const classes = ["shrine-dot"];
   if (selected) classes.push("selected");
   if (hover) classes.push("hover");
@@ -29,6 +37,7 @@ function createMarkerIcon({ selected = false, hover = false } = {}) {
 }
 
 function buildBaseLayers() {
+  const L = getLeaflet();
   const configuredLayers = APP_CONFIG.map.layers || [];
   const baseLayers = {};
 
@@ -75,9 +84,7 @@ function getFitPaddingOptions() {
 }
 
 export function createShrineMap({ onSelect, onMapClick }) {
-  if (!L) {
-    throw new Error("Leaflet failed to load.");
-  }
+  const L = getLeaflet();
 
   const map = L.map("map", {
     zoomControl: false,

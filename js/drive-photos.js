@@ -8,6 +8,8 @@ const NAMED_TYPED_PHOTO_RE =
 const LEGACY_NAMED_PHOTO_RE =
   /^(.+)_([0-9]+)(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
 const APPS_SCRIPT_TIMEOUT_MS = 10000;
+const DRIVE_FILES_CACHE_KEY = "awqaf-drive-photo-files-v1";
+const DRIVE_FILES_CACHE_TTL_MS = 5 * 60 * 1000;
 const PHOTO_TYPE_SORT_ORDER = {
   main: 0,
   inside: 1,
@@ -15,6 +17,53 @@ const PHOTO_TYPE_SORT_ORDER = {
   legacy: 3,
 };
 let jsonpRequestCount = 0;
+
+function getDriveFilesCacheScope() {
+  const { apiKey, appsScriptUrl, folderId } = APP_CONFIG.drivePhotos || {};
+  return [folderId || "", appsScriptUrl || "", apiKey ? "api-key" : "no-api-key"].join("|");
+}
+
+function getDriveFilesCacheStorage() {
+  try {
+    return window.localStorage || null;
+  } catch {
+    return null;
+  }
+}
+
+function readCachedDriveFiles({ allowExpired = false } = {}) {
+  const storage = getDriveFilesCacheStorage();
+  if (!storage) return null;
+
+  try {
+    const cached = JSON.parse(storage.getItem(DRIVE_FILES_CACHE_KEY) || "null");
+    if (!cached || cached.scope !== getDriveFilesCacheScope()) return null;
+    const expiresAt = Number(cached.expiresAt);
+    if (!Number.isFinite(expiresAt)) return null;
+    if (!allowExpired && expiresAt < Date.now()) return null;
+    return Array.isArray(cached.files) ? cached.files : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedDriveFiles(files) {
+  const storage = getDriveFilesCacheStorage();
+  if (!storage || !Array.isArray(files)) return;
+
+  try {
+    storage.setItem(
+      DRIVE_FILES_CACHE_KEY,
+      JSON.stringify({
+        scope: getDriveFilesCacheScope(),
+        expiresAt: Date.now() + DRIVE_FILES_CACHE_TTL_MS,
+        files,
+      }),
+    );
+  } catch {
+    // Browsers can disable storage or reject writes in private mode.
+  }
+}
 
 function parsePhotoIndex(value) {
   const parsed = Number.parseInt(value, 10);
@@ -58,7 +107,13 @@ function isImageFile(file) {
   );
 }
 
-function buildParsedPhoto({ mosqueName, type, index, sequence = index }) {
+function buildParsedPhoto({
+  mosqueName,
+  type,
+  index,
+  sequence = index,
+  namingConvention = "modern",
+}) {
   const cleanMosqueName = cleanCellValue(mosqueName);
 
   if (!cleanMosqueName || !Number.isFinite(index)) {
@@ -70,6 +125,7 @@ function buildParsedPhoto({ mosqueName, type, index, sequence = index }) {
     type,
     index,
     sequence,
+    namingConvention,
     sortOrder: PHOTO_TYPE_SORT_ORDER[type] ?? PHOTO_TYPE_SORT_ORDER.legacy,
   };
 }
@@ -114,6 +170,7 @@ function parseNamedPhoto(fileName) {
     type,
     index,
     sequence: index,
+    namingConvention: "legacy",
   });
 }
 
@@ -231,6 +288,7 @@ function buildDrivePhotoEntry(file, parsedPhoto) {
     type: parsedPhoto.type,
     index: parsedPhoto.index,
     sequence: parsedPhoto.sequence,
+    namingConvention: parsedPhoto.namingConvention,
     sortOrder: parsedPhoto.sortOrder,
     url: `https://drive.google.com/file/d/${encodeURIComponent(file.id)}/view`,
     previewUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(
@@ -241,6 +299,7 @@ function buildDrivePhotoEntry(file, parsedPhoto) {
 }
 
 function buildPhotoIndex(files) {
+  const groupedPhotos = new Map();
   const index = new Map();
 
   files.forEach((file) => {
@@ -252,15 +311,25 @@ function buildPhotoIndex(files) {
     const key = normalizePhotoMosqueName(parsedPhoto.mosqueName);
     if (!key) return;
 
-    if (!index.has(key)) {
-      index.set(key, []);
+    if (!groupedPhotos.has(key)) {
+      groupedPhotos.set(key, {
+        modern: [],
+        legacy: [],
+      });
     }
 
-    index.get(key).push(buildDrivePhotoEntry(file, parsedPhoto));
+    const group = groupedPhotos.get(key);
+    const target =
+      parsedPhoto.namingConvention === "legacy" ? group.legacy : group.modern;
+    target.push(buildDrivePhotoEntry(file, parsedPhoto));
   });
 
-  index.forEach((photos) => {
+  groupedPhotos.forEach(({ modern, legacy }, key) => {
+    const photos = modern.length ? modern : legacy;
+    if (!photos.length) return;
+
     photos.sort(comparePhotoEntries);
+    index.set(key, photos);
   });
 
   return index;
@@ -278,9 +347,22 @@ export async function loadDrivePhotoIndex() {
     return new Map();
   }
 
+  const cachedFiles = readCachedDriveFiles();
+  if (cachedFiles) {
+    return buildPhotoIndex(cachedFiles);
+  }
+
   try {
-    return buildPhotoIndex(await fetchDriveFiles());
+    const files = await fetchDriveFiles();
+    writeCachedDriveFiles(files);
+    return buildPhotoIndex(files);
   } catch (error) {
+    const staleFiles = readCachedDriveFiles({ allowExpired: true });
+    if (staleFiles) {
+      console.warn("Google Drive photos could not be refreshed; using cached photos.", error);
+      return buildPhotoIndex(staleFiles);
+    }
+
     console.warn("Google Drive photos could not be loaded.", error);
     return new Map();
   }

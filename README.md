@@ -94,6 +94,16 @@ Jamia Masjid Main Bazar Kahchu Pura Lahore_O_1.jpg
 
 `_M` is the main/default preview photo. `_I_1`, `_I_2`, etc. are inside photos. `_O_1`, `_O_2`, etc. are outside photos. The `MosqueName` part should match the mosque name in the data, preferably the `Mosque Name` column.
 
+As a fail-safe, the site still accepts the previous numbered format:
+
+```text
+MosqueName_0.jpg
+MosqueName_1.jpg
+MosqueName_2.jpg
+```
+
+For each mosque, the site uses the new `_M` / `_I_#` / `_O_#` photos when it finds them. If it does not find any new-format photos for that mosque, it falls back to the older numbered files.
+
 ### Free setup with Apps Script
 
 This is the recommended free workaround. It avoids a Google Cloud API key in the website.
