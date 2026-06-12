@@ -78,18 +78,21 @@ There is no download step. On each page load, the browser lists the Drive folder
 Photo file names should use this format:
 
 ```text
-MosqueName_#.jpg
+MosqueName_M.jpg
+MosqueName_I_#.jpg
+MosqueName_O_#.jpg
 ```
 
 Examples:
 
 ```text
-Jamia Masjid Shah Hussain Gujrat_0.jpg
-Jamia Masjid Shah Hussain Gujrat_1.jpg
-Jamia Masjid Shah Hussain Gujrat_2.jpg
+Jamia Masjid Main Bazar Kahchu Pura Lahore_M.jpg
+Jamia Masjid Main Bazar Kahchu Pura Lahore_I_1.jpg
+Jamia Masjid Main Bazar Kahchu Pura Lahore_I_2.jpg
+Jamia Masjid Main Bazar Kahchu Pura Lahore_O_1.jpg
 ```
 
-`_0` is the default/preview photo. Higher numbers show after it in the gallery. The `MosqueName` part should match the mosque name in the data, preferably the `Mosque Name` column.
+`_M` is the main/default preview photo. `_I_1`, `_I_2`, etc. are inside photos. `_O_1`, `_O_2`, etc. are outside photos. The `MosqueName` part should match the mosque name in the data, preferably the `Mosque Name` column.
 
 ### Free setup with Apps Script
 

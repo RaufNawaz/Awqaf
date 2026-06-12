@@ -2,8 +2,18 @@ import { APP_CONFIG } from "./config.js";
 import { cleanCellValue, normalizeSearchText } from "./utils.js";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|heic|heif|jpe?g|png|webp|svg)$/i;
-const NAMED_PHOTO_RE = /^(.+)_([0-9]+)(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
+const NAMED_MAIN_PHOTO_RE = /^(.+)_M(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
+const NAMED_TYPED_PHOTO_RE =
+  /^(.+)_(I|O)_([0-9]+)(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
+const LEGACY_NAMED_PHOTO_RE =
+  /^(.+)_([0-9]+)(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
 const APPS_SCRIPT_TIMEOUT_MS = 10000;
+const PHOTO_TYPE_SORT_ORDER = {
+  main: 0,
+  inside: 1,
+  outside: 2,
+  legacy: 3,
+};
 let jsonpRequestCount = 0;
 
 function parsePhotoIndex(value) {
@@ -12,8 +22,27 @@ function parsePhotoIndex(value) {
 }
 
 function comparePhotoEntries(left, right) {
-  const leftIndex = Number.isFinite(left.index) ? left.index : Number.MAX_SAFE_INTEGER;
-  const rightIndex = Number.isFinite(right.index) ? right.index : Number.MAX_SAFE_INTEGER;
+  const leftSortOrder = Number.isFinite(left.sortOrder)
+    ? left.sortOrder
+    : Number.MAX_SAFE_INTEGER;
+  const rightSortOrder = Number.isFinite(right.sortOrder)
+    ? right.sortOrder
+    : Number.MAX_SAFE_INTEGER;
+
+  if (leftSortOrder !== rightSortOrder) {
+    return leftSortOrder - rightSortOrder;
+  }
+
+  const leftIndex = Number.isFinite(left.sequence)
+    ? left.sequence
+    : Number.isFinite(left.index)
+      ? left.index
+      : Number.MAX_SAFE_INTEGER;
+  const rightIndex = Number.isFinite(right.sequence)
+    ? right.sequence
+    : Number.isFinite(right.index)
+      ? right.index
+      : Number.MAX_SAFE_INTEGER;
 
   if (leftIndex !== rightIndex) {
     return leftIndex - rightIndex;
@@ -29,18 +58,63 @@ function isImageFile(file) {
   );
 }
 
-function parseNamedPhoto(fileName) {
-  const match = cleanCellValue(fileName).match(NAMED_PHOTO_RE);
-  if (!match) return null;
+function buildParsedPhoto({ mosqueName, type, index, sequence = index }) {
+  const cleanMosqueName = cleanCellValue(mosqueName);
 
-  const mosqueName = cleanCellValue(match[1]);
-  const index = parsePhotoIndex(match[2]);
-
-  if (!mosqueName || !Number.isFinite(index)) {
+  if (!cleanMosqueName || !Number.isFinite(index)) {
     return null;
   }
 
-  return { mosqueName, index };
+  return {
+    mosqueName: cleanMosqueName,
+    type,
+    index,
+    sequence,
+    sortOrder: PHOTO_TYPE_SORT_ORDER[type] ?? PHOTO_TYPE_SORT_ORDER.legacy,
+  };
+}
+
+function parseNamedPhoto(fileName) {
+  const normalizedFileName = cleanCellValue(fileName);
+  let match = normalizedFileName.match(NAMED_MAIN_PHOTO_RE);
+
+  if (match) {
+    return buildParsedPhoto({
+      mosqueName: match[1],
+      type: "main",
+      index: 0,
+      sequence: 0,
+    });
+  }
+
+  match = normalizedFileName.match(NAMED_TYPED_PHOTO_RE);
+
+  if (match) {
+    const sequence = parsePhotoIndex(match[3]);
+    if (!Number.isFinite(sequence) || sequence < 1) {
+      return null;
+    }
+
+    return buildParsedPhoto({
+      mosqueName: match[1],
+      type: match[2].toUpperCase() === "I" ? "inside" : "outside",
+      index: sequence,
+      sequence,
+    });
+  }
+
+  match = normalizedFileName.match(LEGACY_NAMED_PHOTO_RE);
+  if (!match) return null;
+
+  const index = parsePhotoIndex(match[2]);
+  const type = index === 0 ? "main" : "legacy";
+
+  return buildParsedPhoto({
+    mosqueName: match[1],
+    type,
+    index,
+    sequence: index,
+  });
 }
 
 function buildDriveApiUrl({ folderId, apiKey, pageToken = "" }) {
@@ -154,7 +228,10 @@ function buildDrivePhotoEntry(file, parsedPhoto) {
     source: "google-drive",
     id: file.id,
     name: file.name,
+    type: parsedPhoto.type,
     index: parsedPhoto.index,
+    sequence: parsedPhoto.sequence,
+    sortOrder: parsedPhoto.sortOrder,
     url: `https://drive.google.com/file/d/${encodeURIComponent(file.id)}/view`,
     previewUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(
       file.id,
@@ -238,8 +315,16 @@ export function findDrivePhotosForRow(row, drivePhotoIndex) {
 }
 
 export function formatDrivePhotoLabel(photo, fallbackPosition = 0) {
-  if (photo?.index === 0) {
-    return "Default photo";
+  if (photo?.type === "main" || photo?.index === 0) {
+    return "Main photo";
+  }
+
+  if (photo?.type === "inside") {
+    return `Inside photo ${photo.sequence || photo.index}`;
+  }
+
+  if (photo?.type === "outside") {
+    return `Outside photo ${photo.sequence || photo.index}`;
   }
 
   if (Number.isFinite(photo?.index)) {
