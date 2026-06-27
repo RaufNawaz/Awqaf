@@ -1,8 +1,12 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260612";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260612";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260612";
-import { createShrineMap } from "./map.js?v=photos-20260612";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260612";
+import { APP_CONFIG } from "./config.js?v=photos-20260625";
+import {
+  loadDrivePhotosForRow,
+  loadDrivePhotosForRows,
+  loadShrineRows,
+} from "./data.js?v=photos-20260625";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260625";
+import { createShrineMap } from "./map.js?v=photos-20260625";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260625";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -15,7 +19,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=photos-20260612";
+const PAGE_VERSION_QUERY = "v=photos-20260625";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -33,6 +37,18 @@ const state = {
 let shrineMap = null;
 let tablePanelEl = null;
 let tableButtonEl = null;
+
+function registerPhotoCacheWorker() {
+  if (!("serviceWorker" in navigator) || window.location.protocol === "file:") {
+    return;
+  }
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((error) => {
+      console.warn("Photo cache worker could not be registered.", error);
+    });
+  });
+}
 
 async function waitForLibraries(timeoutMs = 5000) {
   const startedAt = Date.now();
@@ -165,6 +181,22 @@ function getPreviewPhoto(row) {
   return getDisplayablePhotoItems(row)[0]?.photo || null;
 }
 
+function getPhotoImageUrl(photo, variant = "gallery") {
+  return photo?.thumbnailUrls?.[variant] || photo?.previewUrl || photo?.url || "";
+}
+
+function setImagePerformanceAttributes(
+  image,
+  { loading = "lazy", fetchPriority = "low" } = {},
+) {
+  image.loading = loading;
+  image.decoding = "async";
+
+  if ("fetchPriority" in image) {
+    image.fetchPriority = fetchPriority;
+  }
+}
+
 function isDisplayablePhoto(photo) {
   return Boolean(photo?.isRenderable && (photo.previewUrl || photo.url));
 }
@@ -259,18 +291,19 @@ function appendCommentsRow(container, comments) {
   container.appendChild(row);
 }
 
-function createPhotoLink(photo, label) {
+function createPhotoLink(photo, label, imageVariant = "sidebar") {
   const link = document.createElement("a");
   link.className = photo.isRenderable ? "photo-thumb" : "photo-link";
   link.href = photo.url;
   link.target = "_blank";
   link.rel = "noopener noreferrer";
 
-  if (photo.isRenderable) {
+  const imageUrl = getPhotoImageUrl(photo, imageVariant);
+  if (photo.isRenderable && imageUrl) {
     const image = document.createElement("img");
-    image.src = photo.previewUrl || photo.url;
+    image.src = imageUrl;
     image.alt = label;
-    image.loading = "lazy";
+    setImagePerformanceAttributes(image, { loading: "lazy", fetchPriority: "low" });
 
     const caption = document.createElement("span");
     caption.textContent = label;
@@ -352,12 +385,13 @@ function renderDetails(row) {
   elements.details.innerHTML = "";
 
   const preview = getPreviewPhoto(row);
-  if (preview?.previewUrl) {
+  const previewUrl = getPhotoImageUrl(preview, "preview");
+  if (previewUrl) {
     const image = document.createElement("img");
     image.className = "preview";
-    image.src = preview.previewUrl;
+    image.src = previewUrl;
     image.alt = row.title;
-    image.loading = "lazy";
+    setImagePerformanceAttributes(image, { loading: "eager", fetchPriority: "high" });
     image.addEventListener("error", () => image.remove(), { once: true });
     elements.details.appendChild(image);
   }
@@ -669,6 +703,41 @@ function schedulePhotoLoad(rowId) {
   window.setTimeout(loadPhotos, 0);
 }
 
+async function warmDrivePhotosForRows(rows) {
+  if (APP_CONFIG.drivePhotos?.enabled === false || !rows.length) {
+    return;
+  }
+
+  try {
+    await loadDrivePhotosForRows(rows);
+    rows.forEach((row) => {
+      row.drivePhotosState = "loaded";
+    });
+
+    if (state.selectedId) {
+      const selectedRow = getRowById(state.selectedId);
+      if (selectedRow) {
+        renderDetails(selectedRow);
+      }
+    }
+  } catch (error) {
+    console.warn("Google Drive photos could not be warmed in the background.", error);
+  }
+}
+
+function schedulePhotoWarmup(rows) {
+  const warmPhotos = () => {
+    void warmDrivePhotosForRows(rows);
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(warmPhotos, { timeout: 2500 });
+    return;
+  }
+
+  window.setTimeout(warmPhotos, 800);
+}
+
 async function init() {
   setMapPanelTitle(APP_CONFIG.title);
   setStatus(UI_TEXT.loading);
@@ -712,6 +781,7 @@ async function init() {
     buildTableControls();
     renderTableList("");
     setStatus(getDirectoryStatus(rows));
+    schedulePhotoWarmup(rows);
 
     const requestedRowId = getRequestedRowId();
     if (requestedRowId && getRowById(requestedRowId)) {
@@ -732,4 +802,5 @@ async function init() {
   });
 }
 
+registerPhotoCacheWorker();
 init();

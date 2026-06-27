@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260612";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260612";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260612";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260612";
+import { APP_CONFIG } from "./config.js?v=photos-20260625";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260625";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260625";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260625";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -39,9 +39,21 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=photos-20260612";
+const PAGE_VERSION_QUERY = "v=photos-20260625";
 
 const pageEl = document.getElementById("mosquePage");
+
+function registerPhotoCacheWorker() {
+  if (!("serviceWorker" in navigator) || window.location.protocol === "file:") {
+    return;
+  }
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((error) => {
+      console.warn("Photo cache worker could not be registered.", error);
+    });
+  });
+}
 
 async function waitForLibraries(timeoutMs = 5000) {
   const startedAt = Date.now();
@@ -256,6 +268,10 @@ function buildPhotoItems(row) {
   return photos.filter((photo) => photo.isRenderable && (photo.previewUrl || photo.url));
 }
 
+function getPhotoImageUrl(photo, variant = "gallery") {
+  return photo?.thumbnailUrls?.[variant] || photo?.previewUrl || photo?.url || "";
+}
+
 function getNearbyMosques(rows, currentRow, limit = 4) {
   if (!Number.isFinite(currentRow?.latitude) || !Number.isFinite(currentRow?.longitude)) {
     return [];
@@ -415,26 +431,30 @@ function renderGallerySection(items) {
       </div>
       <div class="mosque-gallery-grid">
         ${items
-          .map(
-            ({ url, previewUrl, isRenderable, label }) => `
+          .map((photo) => {
+            const imageUrl = getPhotoImageUrl(photo, "gallery");
+
+            return `
               <a
                 class="mosque-gallery-item"
-                href="${escapeHtml(url)}"
+                href="${escapeHtml(photo.url)}"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 <div class="mosque-gallery-media">
                   <img
                     class="mosque-gallery-img mosque-media-img"
-                    src="${escapeHtml(previewUrl || url)}"
-                    alt="${escapeHtml(label)}"
+                    src="${escapeHtml(imageUrl)}"
+                    alt="${escapeHtml(photo.label)}"
                     loading="lazy"
+                    decoding="async"
+                    fetchpriority="low"
                   />
                 </div>
-                <span>${escapeHtml(label)}</span>
+                <span>${escapeHtml(photo.label)}</span>
               </a>
-            `,
-          )
+            `;
+          })
           .join("")}
       </div>
     </section>
@@ -471,14 +491,18 @@ function renderNearbySection(items) {
 
 function renderHeroPhoto(photo) {
   if (!photo) return "";
+  const imageUrl = getPhotoImageUrl(photo, "hero");
+  if (!imageUrl) return "";
 
   return `
     <a class="mosque-hero-media-wrap" href="#gallery" aria-label="${escapeHtml(UI_TEXT.galleryHeading)}">
       <img
         class="mosque-hero-media-img"
-        src="${escapeHtml(photo.previewUrl || photo.url)}"
+        src="${escapeHtml(imageUrl)}"
         alt="${escapeHtml(photo.label)}"
         loading="eager"
+        decoding="async"
+        fetchpriority="high"
       />
     </a>
   `;
@@ -652,6 +676,36 @@ function renderMessage(title, message) {
   `;
 }
 
+async function loadPageDrivePhotos(rows, row) {
+  if (APP_CONFIG.drivePhotos?.enabled === false || row.drivePhotosState === "loaded") {
+    return;
+  }
+
+  row.drivePhotosState = "loading";
+
+  try {
+    await loadDrivePhotosForRow(row);
+    row.drivePhotosState = "loaded";
+    renderPage(rows, row);
+  } catch (error) {
+    row.drivePhotosState = "failed";
+    console.warn("Google Drive photos could not be loaded after initial render.", error);
+  }
+}
+
+function schedulePagePhotoLoad(rows, row) {
+  const loadPhotos = () => {
+    void loadPageDrivePhotos(rows, row);
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(loadPhotos, { timeout: 800 });
+    return;
+  }
+
+  window.setTimeout(loadPhotos, 0);
+}
+
 async function init() {
   pageEl.innerHTML = `<p class="muted">${escapeHtml(UI_TEXT.loading)}</p>`;
 
@@ -672,17 +726,13 @@ async function init() {
       return;
     }
 
-    try {
-      await loadDrivePhotosForRow(row);
-    } catch (error) {
-      console.warn("Google Drive photos could not be loaded before initial render.", error);
-    }
-
     renderPage(rows, row);
+    schedulePagePhotoLoad(rows, row);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     renderMessage(UI_TEXT.failedTitle, `${UI_TEXT.failedPrefix} ${message}`);
   }
 }
 
+registerPhotoCacheWorker();
 init();

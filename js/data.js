@@ -1,9 +1,9 @@
-import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=photos-20260612";
+import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=photos-20260625";
 import {
   findDrivePhotosForRow,
   loadDrivePhotosForRow as fetchDrivePhotosForRow,
   loadDrivePhotoIndex,
-} from "./drive-photos.js?v=photos-20260612";
+} from "./drive-photos.js?v=photos-20260625";
 import {
   cleanCellValue,
   cleanYearLikeValue,
@@ -19,7 +19,14 @@ import {
   parseRuralUrbanLabel,
   parseWomenPrayerLabel,
   pickFirstValue,
-} from "./utils.js?v=photos-20260612";
+} from "./utils.js?v=photos-20260625";
+
+const DEFAULT_PHOTO_THUMBNAIL_SIZES = {
+  sidebar: "w360",
+  preview: "w640",
+  gallery: "w1200",
+  hero: "w1200",
+};
 
 function normalizeRawRow(rawRow) {
   const normalized = {};
@@ -33,10 +40,29 @@ function normalizeRawRow(rawRow) {
   return normalized;
 }
 
+function getPhotoThumbnailSize(sizeKey) {
+  return (
+    APP_CONFIG.drivePhotos?.thumbnailSizes?.[sizeKey] ||
+    DEFAULT_PHOTO_THUMBNAIL_SIZES[sizeKey] ||
+    APP_CONFIG.drivePhotos?.thumbnailSize ||
+    DEFAULT_PHOTO_THUMBNAIL_SIZES.gallery
+  );
+}
+
+function buildPhotoThumbnailUrls(url) {
+  return {
+    sidebar: getImagePreviewUrl(url, getPhotoThumbnailSize("sidebar")),
+    preview: getImagePreviewUrl(url, getPhotoThumbnailSize("preview")),
+    gallery: getImagePreviewUrl(url, getPhotoThumbnailSize("gallery")),
+    hero: getImagePreviewUrl(url, getPhotoThumbnailSize("hero")),
+  };
+}
+
 function buildPhotoEntries(rawValue) {
   return extractUrls(rawValue).map((url) => ({
     url,
-    previewUrl: getImagePreviewUrl(url),
+    previewUrl: getImagePreviewUrl(url, getPhotoThumbnailSize("gallery")),
+    thumbnailUrls: buildPhotoThumbnailUrls(url),
     isRenderable: isRenderableImageUrl(url),
   }));
 }

@@ -1,4 +1,4 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260612";
+import { APP_CONFIG } from "./config.js?v=photos-20260625";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&

@@ -16,6 +16,7 @@ This is a static single-page website inspired by the look and feel of the Sufi S
 |   `-- utils.js
 |-- index.html
 |-- mosque.html
+|-- sw.js
 |-- style.css
 `-- README.md
 ```
@@ -73,7 +74,7 @@ The site can load mosque photos directly from this Google Drive folder:
 https://drive.google.com/drive/folders/15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo
 ```
 
-There is no download step. On each page load, the browser lists the Drive folder, reads file names, and attaches matching images to the mosque rows.
+There is no manual download step. The browser asks the Apps Script for the Drive folder file list, caches that metadata in `localStorage`, builds an in-memory photo index once per page session, and attaches matching images to mosque rows in the background. The images themselves use right-sized Google Drive thumbnail URLs and a small service worker cache so switching between mosques does not repeatedly reload the same thumbnails.
 
 Photo file names should use this format:
 
@@ -211,7 +212,7 @@ function normalizePhotoSearchText(value) {
 7. Deploy, authorize it once, then copy the `/exec` web app URL.
 8. Paste that URL into `APP_CONFIG.drivePhotos.appsScriptUrl` in `js/config.js`.
 
-After that, you only upload new photos to the Drive folder. The website asks the Apps Script for the folder file list, then loads image thumbnails from Drive.
+After that, you only upload new photos to the Drive folder. The website asks the Apps Script for the folder file list, caches the list briefly, then loads size-specific image thumbnails from Drive.
 
 ### Optional Google Drive API setup
 
@@ -228,5 +229,6 @@ If both `appsScriptUrl` and `apiKey` are blank, or Drive cannot be listed, the s
 
 - Marker clicks and result clicks open the in-page detail drawer.
 - Each mosque also has a detail page at `mosque.html?id=...`.
+- `sw.js` caches Drive thumbnail responses for faster repeat visits and shrine switching. It works on `http://localhost` and HTTPS deployments, not when opening files directly from disk.
 - The Google Drive API key is visible in browser source, so restrict it in Google Cloud.
 - Old local images, offline CSV snapshots, and import scripts are kept under ignored `junk/` storage only.

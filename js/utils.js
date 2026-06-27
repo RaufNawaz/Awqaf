@@ -135,13 +135,24 @@ export function getGoogleDriveFileId(url) {
   return fileMatch ? fileMatch[1] : "";
 }
 
-export function getImagePreviewUrl(url) {
+export function buildGoogleDriveThumbnailUrl(fileId, size = "w1200") {
+  const cleanFileId = cleanCellValue(fileId);
+  const cleanSize = cleanCellValue(size) || "w1200";
+
+  if (!cleanFileId) return "";
+
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(
+    cleanFileId,
+  )}&sz=${encodeURIComponent(cleanSize)}`;
+}
+
+export function getImagePreviewUrl(url, size = "w1200") {
   const normalized = normalizeUrl(url);
   if (!normalized) return "";
 
   const driveId = getGoogleDriveFileId(normalized);
   if (driveId) {
-    return `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId)}&sz=w1200`;
+    return buildGoogleDriveThumbnailUrl(driveId, size);
   }
 
   return normalized;

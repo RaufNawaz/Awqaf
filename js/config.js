@@ -17,7 +17,13 @@ export const APP_CONFIG = {
     // Optional Google Drive API fallback. Restrict this key to the Google Drive API
     // and your website domain in Google Cloud if you choose to use it.
     apiKey: "",
-    thumbnailSize: "w1600",
+    thumbnailSize: "w1200",
+    thumbnailSizes: {
+      sidebar: "w360",
+      preview: "w640",
+      gallery: "w1200",
+      hero: "w1200",
+    },
   },
   map: {
     defaultCenter: [30.3753, 69.3451],

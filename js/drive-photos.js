@@ -1,5 +1,9 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260612";
-import { cleanCellValue, normalizeSearchText } from "./utils.js?v=photos-20260612";
+import { APP_CONFIG } from "./config.js?v=photos-20260625";
+import {
+  buildGoogleDriveThumbnailUrl,
+  cleanCellValue,
+  normalizeSearchText,
+} from "./utils.js?v=photos-20260625";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|heic|heif|jpe?g|png|webp|svg)$/i;
 const NAMED_MAIN_PHOTO_RE = /^(.+)_M(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
@@ -10,6 +14,12 @@ const LEGACY_NAMED_PHOTO_RE =
 const APPS_SCRIPT_TIMEOUT_MS = 10000;
 const DRIVE_FILES_CACHE_KEY = "awqaf-drive-photo-files-v3";
 const DRIVE_FILES_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_THUMBNAIL_SIZES = {
+  sidebar: "w360",
+  preview: "w640",
+  gallery: "w1200",
+  hero: "w1200",
+};
 const PHOTO_TYPE_SORT_ORDER = {
   main: 0,
   inside: 1,
@@ -17,6 +27,9 @@ const PHOTO_TYPE_SORT_ORDER = {
   legacy: 3,
 };
 let jsonpRequestCount = 0;
+let drivePhotoIndex = null;
+let drivePhotoIndexPromise = null;
+const rowPhotoCache = new Map();
 
 function getDriveFilesCacheScope() {
   const { apiKey, appsScriptUrl, folderId } = APP_CONFIG.drivePhotos || {};
@@ -63,6 +76,36 @@ function writeCachedDriveFiles(files) {
   } catch {
     // Browsers can disable storage or reject writes in private mode.
   }
+}
+
+function clonePhotoEntry(photo) {
+  return {
+    ...photo,
+    thumbnailUrls: photo.thumbnailUrls ? { ...photo.thumbnailUrls } : undefined,
+  };
+}
+
+function clonePhotos(photos) {
+  return (photos || []).map(clonePhotoEntry);
+}
+
+function getThumbnailSize(sizeKey) {
+  const configuredSizes = APP_CONFIG.drivePhotos?.thumbnailSizes || {};
+  return (
+    cleanCellValue(configuredSizes[sizeKey]) ||
+    DEFAULT_THUMBNAIL_SIZES[sizeKey] ||
+    cleanCellValue(APP_CONFIG.drivePhotos?.thumbnailSize) ||
+    DEFAULT_THUMBNAIL_SIZES.gallery
+  );
+}
+
+function buildDriveThumbnailUrls(fileId) {
+  return {
+    sidebar: buildGoogleDriveThumbnailUrl(fileId, getThumbnailSize("sidebar")),
+    preview: buildGoogleDriveThumbnailUrl(fileId, getThumbnailSize("preview")),
+    gallery: buildGoogleDriveThumbnailUrl(fileId, getThumbnailSize("gallery")),
+    hero: buildGoogleDriveThumbnailUrl(fileId, getThumbnailSize("hero")),
+  };
 }
 
 function parsePhotoIndex(value) {
@@ -324,7 +367,7 @@ async function fetchDriveFiles({ query = "" } = {}) {
 }
 
 function buildDrivePhotoEntry(file, parsedPhoto) {
-  const thumbnailSize = APP_CONFIG.drivePhotos?.thumbnailSize || "w1600";
+  const thumbnailUrls = buildDriveThumbnailUrls(file.id);
 
   return {
     source: "google-drive",
@@ -336,9 +379,8 @@ function buildDrivePhotoEntry(file, parsedPhoto) {
     namingConvention: parsedPhoto.namingConvention,
     sortOrder: parsedPhoto.sortOrder,
     url: `https://drive.google.com/file/d/${encodeURIComponent(file.id)}/view`,
-    previewUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(
-      file.id,
-    )}&sz=${encodeURIComponent(thumbnailSize)}`,
+    previewUrl: thumbnailUrls.gallery,
+    thumbnailUrls,
     isRenderable: true,
   };
 }
@@ -414,24 +456,46 @@ export async function loadDrivePhotoIndex() {
     return new Map();
   }
 
-  const cachedFiles = readCachedDriveFiles();
-  if (cachedFiles) {
-    return buildPhotoIndex(cachedFiles);
+  if (drivePhotoIndex) {
+    return drivePhotoIndex;
   }
 
-  try {
-    const files = await fetchDriveFiles();
-    writeCachedDriveFiles(files);
-    return buildPhotoIndex(files);
-  } catch (error) {
-    const staleFiles = readCachedDriveFiles({ allowExpired: true });
-    if (staleFiles) {
-      console.warn("Google Drive photos could not be refreshed; using cached photos.", error);
-      return buildPhotoIndex(staleFiles);
+  if (drivePhotoIndexPromise) {
+    return drivePhotoIndexPromise;
+  }
+
+  drivePhotoIndexPromise = (async () => {
+    const cachedFiles = readCachedDriveFiles();
+    if (cachedFiles) {
+      drivePhotoIndex = buildPhotoIndex(cachedFiles);
+      return drivePhotoIndex;
     }
 
-    console.warn("Google Drive photos could not be loaded.", error);
-    return new Map();
+    try {
+      const files = await fetchDriveFiles();
+      writeCachedDriveFiles(files);
+      drivePhotoIndex = buildPhotoIndex(files);
+      return drivePhotoIndex;
+    } catch (error) {
+      const staleFiles = readCachedDriveFiles({ allowExpired: true });
+      if (staleFiles) {
+        console.warn("Google Drive photos could not be refreshed; using cached photos.", error);
+        drivePhotoIndex = buildPhotoIndex(staleFiles);
+        return drivePhotoIndex;
+      }
+
+      console.warn("Google Drive photos could not be loaded.", error);
+      drivePhotoIndex = new Map();
+      return drivePhotoIndex;
+    }
+  })();
+
+  try {
+    return await drivePhotoIndexPromise;
+  } finally {
+    if (!drivePhotoIndex) {
+      drivePhotoIndexPromise = null;
+    }
   }
 }
 
@@ -450,11 +514,18 @@ export function findDrivePhotosForRow(row, drivePhotoIndex) {
 
     const photos = drivePhotoIndex.get(key);
     if (photos?.length) {
-      return photos.map((photo) => ({ ...photo }));
+      return clonePhotos(photos);
     }
   }
 
   return [];
+}
+
+function getRowPhotoCacheKey(row) {
+  return getPhotoMatchCandidates(row)
+    .map((candidate) => normalizePhotoMosqueName(candidate))
+    .filter(Boolean)
+    .join("|");
 }
 
 export async function loadDrivePhotosForRow(row) {
@@ -462,29 +533,18 @@ export async function loadDrivePhotosForRow(row) {
     return [];
   }
 
-  const cachedFiles = readCachedDriveFiles();
-  if (cachedFiles) {
-    const cachedPhotos = findDrivePhotosForRow(row, buildPhotoIndex(cachedFiles));
-    if (cachedPhotos.length) {
-      return cachedPhotos;
-    }
-  }
-
-  const query = getPhotoMatchCandidates(row)
-    .map((candidate) => cleanCellValue(candidate))
-    .filter(Boolean)
-    .join("|");
-
-  if (!query) {
+  const cacheKey = getRowPhotoCacheKey(row);
+  if (!cacheKey) {
     return [];
   }
 
-  try {
-    return findDrivePhotosForRow(row, buildPhotoIndex(await fetchDriveFiles({ query })));
-  } catch (error) {
-    console.warn("Google Drive photos could not be loaded for this row.", error);
-    return [];
+  if (rowPhotoCache.has(cacheKey)) {
+    return clonePhotos(rowPhotoCache.get(cacheKey));
   }
+
+  const photos = findDrivePhotosForRow(row, await loadDrivePhotoIndex());
+  rowPhotoCache.set(cacheKey, clonePhotos(photos));
+  return clonePhotos(photos);
 }
 
 export function formatDrivePhotoLabel(photo, fallbackPosition = 0) {
