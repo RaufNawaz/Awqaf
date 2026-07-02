@@ -206,12 +206,16 @@ h1 {
 
 .preview {
   width: 100%;
+  aspect-ratio: 7 / 5;
   max-height: 250px;
   object-fit: cover;
   border-radius: 8px;
   margin: 0 0 14px;
   display: block;
   border: 1px solid var(--border);
+  /* Placeholder tone while the photo streams in; also reserves the box so
+     the fact rows below don't jump when the image arrives. */
+  background: linear-gradient(180deg, #f2f7f6, #e6efec);
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
 }
 
@@ -232,6 +236,7 @@ h1 {
   margin: 0 0 3px;
   font-size: 12px;
   font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -390,7 +395,7 @@ input:focus-visible {
 }
 
 .shrine-table-btn button {
-  width: 270px;
+  width: 320px;
   max-width: calc(100vw - 32px);
   display: flex;
   align-items: center;
@@ -418,7 +423,7 @@ input:focus-visible {
 }
 
 .shrine-drop {
-  width: 270px;
+  width: 320px;
   max-width: calc(100vw - 32px);
   margin-top: 8px;
   background: var(--panel);
@@ -801,9 +806,11 @@ input:focus-visible {
   --mosque-border-soft: rgba(23, 32, 51, 0.09);
   --mosque-text: #172739;
   --mosque-muted: #647084;
-  --mosque-accent: #1f5e56;
-  --mosque-accent-strong: #184b45;
-  --mosque-accent-soft: rgba(31, 94, 86, 0.1);
+  /* Single brand green shared with the map page (:root --accent) so the
+     accent doesn't shift between the two pages. */
+  --mosque-accent: var(--accent);
+  --mosque-accent-strong: var(--accent-strong);
+  --mosque-accent-soft: rgba(15, 118, 110, 0.1);
   --mosque-shadow-lg: 0 24px 48px rgba(15, 23, 42, 0.1);
   --mosque-shadow-md: 0 16px 32px rgba(15, 23, 42, 0.08);
   --mosque-shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.06);
@@ -902,7 +909,7 @@ input:focus-visible {
 
 .mosque-hero-media-wrap:hover {
   transform: translateY(-2px);
-  border-color: rgba(31, 94, 86, 0.22);
+  border-color: rgba(15, 118, 110, 0.22);
   box-shadow: var(--mosque-shadow-lg);
   text-decoration: none;
 }
@@ -927,7 +934,7 @@ input:focus-visible {
   color: var(--mosque-accent);
   font-size: 0.86rem;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -951,7 +958,7 @@ input:focus-visible {
   color: var(--mosque-accent);
   font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -980,17 +987,15 @@ input:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
-  min-width: 170px;
+  min-height: 48px;
+  min-width: 120px;
   padding: 0 22px;
   border: 1px solid rgba(23, 39, 57, 0.2);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.84);
   color: var(--mosque-text);
   text-decoration: none;
-  font: 800 1rem var(--font-ui);
-  letter-spacing: 0;
-  text-transform: uppercase;
+  font: 700 0.98rem var(--font-ui);
   transition:
     transform 160ms ease,
     background 160ms ease,
@@ -1005,8 +1010,8 @@ input:focus-visible {
 }
 
 .mosque-section-tab-active {
-  background: linear-gradient(180deg, #2b7268, var(--mosque-accent));
-  border-color: rgba(31, 94, 86, 0.32);
+  background: linear-gradient(180deg, #12867d, var(--mosque-accent));
+  border-color: rgba(15, 118, 110, 0.32);
   box-shadow: var(--mosque-shadow-sm);
 }
 
@@ -1060,6 +1065,21 @@ input:focus-visible {
   line-height: 1.68;
 }
 
+/* Links inside body copy and fact values need a visible affordance —
+   .mosque-body a { color: inherit } hides them otherwise. */
+.mosque-richtext a,
+.mosque-fact dd a {
+  color: var(--mosque-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.mosque-richtext a:hover,
+.mosque-fact dd a:hover {
+  color: var(--mosque-accent-strong);
+}
+
 .mosque-action-row {
   display: flex;
   flex-wrap: wrap;
@@ -1082,9 +1102,7 @@ input:focus-visible {
   background: #ffffff;
   color: var(--mosque-text);
   text-decoration: none;
-  font: 800 1rem var(--font-ui);
-  letter-spacing: 0;
-  text-transform: uppercase;
+  font: 700 1rem var(--font-ui);
   box-shadow: var(--mosque-shadow-sm);
   transition:
     transform 160ms ease,
@@ -1099,8 +1117,8 @@ input:focus-visible {
 }
 
 .mosque-btn-primary {
-  border-color: rgba(31, 94, 86, 0.26);
-  background: linear-gradient(180deg, #2a7167, var(--mosque-accent));
+  border-color: rgba(15, 118, 110, 0.26);
+  background: linear-gradient(180deg, #12867d, var(--mosque-accent));
 }
 
 .mosque-sidebar-card {
@@ -1138,7 +1156,7 @@ input:focus-visible {
   color: var(--mosque-accent);
   font-size: 0.86rem;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1167,7 +1185,7 @@ input:focus-visible {
   color: #6a7b8e;
   font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -1229,7 +1247,7 @@ input:focus-visible {
   color: var(--mosque-muted);
   font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -1309,7 +1327,7 @@ input:focus-visible {
 
 .mosque-nearby-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(31, 94, 86, 0.22);
+  border-color: rgba(15, 118, 110, 0.22);
   box-shadow: var(--mosque-shadow-md);
   text-decoration: none;
 }
@@ -1418,13 +1436,6 @@ input:focus-visible {
 
 .mosque-aside > *:nth-child(2) {
   animation-delay: 190ms;
-}
-
-.mosque-sidebar-card:hover,
-.mosque-coordinate-card:hover,
-.mosque-map-wrap:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--mosque-shadow-lg);
 }
 
 @keyframes mosque-fade-up {
