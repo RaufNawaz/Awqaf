@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Awqaf Mosque Directory</title>
+    <title>Auqaf Mosque Directory</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://unpkg.com" />
@@ -25,6 +25,14 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       defer
     ></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    />
+    <script
+      src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"
+      defer
+    ></script>
     <script
       src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
       defer
@@ -33,7 +41,7 @@
   </head>
   <body>
     <div id="wrap">
-      <div id="map" aria-label="Map of Awqaf locations"></div>
+      <div id="map" aria-label="Map of Auqaf locations"></div>
 
       <aside id="sidebar" class="collapsed" aria-label="Selected mosque details">
         <button
@@ -48,7 +56,7 @@
 
         <div class="sidebar-inner">
           <div class="sidebar-header">
-            <h1 id="mapTitle">Awqaf Directory</h1>
+            <h1 id="mapTitle">Auqaf Directory</h1>
           </div>
           <div id="status" class="status" aria-live="polite">Loading...</div>
           <div id="details" class="details">
@@ -60,6 +68,6 @@
       </aside>
     </div>
 
-    <script type="module" src="./js/app.js?v=photos-20260625"></script>
+    <script type="module" src="./js/app.js?v=cluster-20260701"></script>
   </body>
 </html>

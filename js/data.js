@@ -1,9 +1,9 @@
-import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=photos-20260625";
+import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=cluster-20260701";
 import {
   findDrivePhotosForRow,
   loadDrivePhotosForRow as fetchDrivePhotosForRow,
   loadDrivePhotoIndex,
-} from "./drive-photos.js?v=photos-20260625";
+} from "./drive-photos.js?v=cluster-20260701";
 import {
   cleanCellValue,
   cleanYearLikeValue,
@@ -19,7 +19,7 @@ import {
   parseRuralUrbanLabel,
   parseWomenPrayerLabel,
   pickFirstValue,
-} from "./utils.js?v=photos-20260625";
+} from "./utils.js?v=cluster-20260701";
 
 const DEFAULT_PHOTO_THUMBNAIL_SIZES = {
   sidebar: "w360",
@@ -27,6 +27,30 @@ const DEFAULT_PHOTO_THUMBNAIL_SIZES = {
   gallery: "w1200",
   hero: "w1200",
 };
+
+// Display-time corrections for known typos in the source sheet's "Zone"
+// column. Keys are normalized (lowercase, collapsed whitespace) as they
+// appear in the sheet; values are the corrected spelling shown in the UI.
+// The sheet itself is not editable here, so this keeps the directory,
+// pop-up, and detail page consistent without touching the live data source.
+// Extend this map if new source-data typos turn up.
+const DISTRICT_NAME_FIXES = {
+  gujrawala: "Gujranwala",
+  saikot: "Sialkot",
+  shiekhpura: "Sheikhupura",
+  bahawalpure: "Bahawalpur",
+  chistain: "Chishtian",
+  "khanpure ( rahim yar khan )": "Khanpur ( Rahim Yar Khan )",
+};
+
+function normalizeDistrictKey(value) {
+  return normalizeSearchText(value).replace(/\s+/g, " ").trim();
+}
+
+function applyDistrictNameFix(zone) {
+  const fixed = DISTRICT_NAME_FIXES[normalizeDistrictKey(zone)];
+  return fixed || zone;
+}
 
 function normalizeRawRow(rawRow) {
   const normalized = {};
@@ -83,7 +107,7 @@ function normalizeRow(rawRow, index) {
     return null;
   }
 
-  const zone = pickFirstValue(row, columns.zone);
+  const zone = applyDistrictNameFix(pickFirstValue(row, columns.zone));
   const city = pickFirstValue(row, columns.city);
   const address = pickFirstValue(row, columns.address);
   const mosqueId = pickFirstValue(row, columns.mosqueId);

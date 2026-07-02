@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260625";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260625";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260625";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260625";
+import { APP_CONFIG } from "./config.js?v=cluster-20260701";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=cluster-20260701";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=cluster-20260701";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=cluster-20260701";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -9,15 +9,13 @@ const UI_TEXT = {
   notFound: "Mosque not found.",
   failedTitle: "Unable to load this mosque page",
   failedPrefix: "Failed to load data:",
-  pageEyebrow: "Awqaf Mosque Directory",
+  pageEyebrow: "Auqaf Mosque Directory",
   backToDirectory: "Back to directory",
-  browseMap: "Browse map",
   getDirections: "Get directions",
   openFullMap: "Open full map",
   publicDetails: "Public details",
   aboutTab: "About",
   locationTab: "Location",
-  detailsTab: "Public details",
   nearbyTab: "Nearby",
   aboutHeading: "About this mosque",
   mapHeading: "Location map",
@@ -39,7 +37,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=photos-20260625";
+const PAGE_VERSION_QUERY = "v=cluster-20260701";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -183,13 +181,7 @@ function splitSentences(text) {
 }
 
 function buildGeneratedNarrative(row) {
-  const locationLabel = getLocationLabel(row);
-  const introParts = [];
   const bodyParts = [];
-
-  if (locationLabel) {
-    introParts.push(`This mosque is listed in ${locationLabel}.`);
-  }
 
   if (row.mosqueBuiltDate) {
     bodyParts.push(`The recorded built year is ${row.mosqueBuiltDate}.`);
@@ -208,7 +200,7 @@ function buildGeneratedNarrative(row) {
   }
 
   return {
-    intro: introParts.join(" ").trim() || UI_TEXT.fallbackIntro,
+    intro: UI_TEXT.fallbackIntro,
     body: bodyParts.length ? [bodyParts.join(" ")] : [UI_TEXT.fallbackBody],
   };
 }
@@ -510,10 +502,13 @@ function renderHeroPhoto(photo) {
 
 function renderPage(rows, row) {
   const narrative = buildNarrative(row);
-  const galleryItems = buildPhotoItems(row);
-  const defaultPhoto = galleryItems[0] || null;
+  const photoItems = buildPhotoItems(row);
+  const defaultPhoto = photoItems[0] || null;
+  // The main photo is already shown as the hero above (and as the thumbnail
+  // elsewhere); showing it again in the gallery grid below would duplicate it
+  // against its own inside/outside shots.
+  const galleryItems = photoItems.filter((photo) => photo.type !== "main");
   const nearbyMosques = getNearbyMosques(rows, row);
-  const alternateName = getOnSiteName(row) || getRegisteredName(row);
   const locationLabel = getLocationLabel(row);
   const addressLabel = getAddressLabel(row);
   const directionsUrl = buildDirectionsUrl(row.latitude, row.longitude);
@@ -534,9 +529,6 @@ function renderPage(rows, row) {
         <a class="mosque-toolbar-link" href="${escapeHtml(
           getMapPageUrl(row),
         )}">${escapeHtml(UI_TEXT.backToDirectory)}</a>
-        <a class="mosque-toolbar-link mosque-toolbar-link-muted" href="./index.html?${PAGE_VERSION_QUERY}">${escapeHtml(
-          UI_TEXT.browseMap,
-        )}</a>
       </div>
 
       <section class="mosque-hero">
@@ -544,11 +536,6 @@ function renderPage(rows, row) {
           <div class="mosque-hero-copy">
             <p class="mosque-eyebrow">${escapeHtml(UI_TEXT.pageEyebrow)}</p>
             <h1 class="mosque-title">${escapeHtml(row.title)}</h1>
-            ${
-              alternateName
-                ? `<p class="mosque-alt-name">${escapeHtml(alternateName)}</p>`
-                : ""
-            }
             ${
               locationLabel
                 ? `<p class="mosque-location-line">${escapeHtml(locationLabel)}</p>`
@@ -560,7 +547,7 @@ function renderPage(rows, row) {
         </div>
         <div class="mosque-hero-divider"></div>
         <nav class="mosque-section-nav" aria-label="Mosque page sections">
-          <a class="mosque-section-tab mosque-section-tab-active" href="#overview">${escapeHtml(
+          <a class="mosque-section-tab" href="#overview">${escapeHtml(
             UI_TEXT.aboutTab,
           )}</a>
           <a class="mosque-section-tab" href="#location">${escapeHtml(
@@ -568,9 +555,6 @@ function renderPage(rows, row) {
           )}</a>
           <a class="mosque-section-tab" href="#nearby">${escapeHtml(
             UI_TEXT.nearbyTab,
-          )}</a>
-          <a class="mosque-section-tab" href="#details">${escapeHtml(
-            UI_TEXT.detailsTab,
           )}</a>
         </nav>
       </section>
@@ -613,15 +597,10 @@ function renderPage(rows, row) {
                   </a>
                 </div>
                 <div class="mosque-action-row mosque-action-row-compact">
-                  <a class="mosque-btn mosque-btn-primary" href="${escapeHtml(
+                  <a class="mosque-btn" href="${escapeHtml(
                     directionsUrl,
                   )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
                     UI_TEXT.getDirections,
-                  )}</a>
-                  <a class="mosque-btn" href="${escapeHtml(
-                    fullMapUrl,
-                  )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-                    UI_TEXT.openFullMap,
                   )}</a>
                 </div>
               </div>

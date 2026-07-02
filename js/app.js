@@ -1,25 +1,25 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260625";
+import { APP_CONFIG } from "./config.js?v=cluster-20260701";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=photos-20260625";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260625";
-import { createShrineMap } from "./map.js?v=photos-20260625";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260625";
+} from "./data.js?v=cluster-20260701";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=cluster-20260701";
+import { createShrineMap } from "./map.js?v=cluster-20260701";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=cluster-20260701";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
   loadingPhotos: "Loading photos...",
   noSelection: "No mosque selected yet. Click a marker to view details.",
-  directoryButton: "Awqaf Directory",
+  directoryButton: "Auqaf Directory",
   searchPlaceholder: "Search mosques...",
   noMatches: "No matches.",
   uncategorized: "Other Districts",
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=photos-20260625";
+const PAGE_VERSION_QUERY = "v=cluster-20260701";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -53,9 +53,13 @@ function registerPhotoCacheWorker() {
 async function waitForLibraries(timeoutMs = 5000) {
   const startedAt = Date.now();
 
-  while (!window.L || !window.Papa) {
+  while (
+    !window.L ||
+    !window.Papa ||
+    typeof window.L.markerClusterGroup !== "function"
+  ) {
     if (Date.now() - startedAt > timeoutMs) {
-      throw new Error("Leaflet or Papa Parse did not finish loading.");
+      throw new Error("Leaflet, Leaflet.markercluster, or Papa Parse did not finish loading.");
     }
 
     await wait(30);
@@ -161,22 +165,6 @@ function getMosqueGalleryUrl(row) {
   return `${getMosquePageUrl(row)}#gallery`;
 }
 
-function getAlternateName(row) {
-  if (
-    row.mosqueNameOnGround &&
-    row.mosqueNameOnGround !== row.title &&
-    row.mosqueNameOnGround !== row.mosqueName
-  ) {
-    return row.mosqueNameOnGround;
-  }
-
-  if (row.mosqueName && row.mosqueName !== row.title) {
-    return row.mosqueName;
-  }
-
-  return "";
-}
-
 function getPreviewPhoto(row) {
   return getDisplayablePhotoItems(row)[0]?.photo || null;
 }
@@ -195,6 +183,40 @@ function setImagePerformanceAttributes(
   if ("fetchPriority" in image) {
     image.fetchPriority = fetchPriority;
   }
+}
+
+function buildPreviewImage(row) {
+  const preview = getPreviewPhoto(row);
+  if (!preview) return null;
+
+  const instantUrl = getPhotoImageUrl(preview, "sidebar");
+  const fullUrl = getPhotoImageUrl(preview, "preview");
+  const initialUrl = instantUrl || fullUrl;
+  if (!initialUrl) return null;
+
+  const image = document.createElement("img");
+  image.className = "preview";
+  image.src = initialUrl;
+  image.alt = row.title;
+  setImagePerformanceAttributes(image, { loading: "eager", fetchPriority: "high" });
+  image.addEventListener("error", () => image.remove(), { once: true });
+
+  if (fullUrl && fullUrl !== initialUrl) {
+    const upgrade = new Image();
+    upgrade.decoding = "async";
+    upgrade.addEventListener(
+      "load",
+      () => {
+        if (image.isConnected) {
+          image.src = fullUrl;
+        }
+      },
+      { once: true },
+    );
+    upgrade.src = fullUrl;
+  }
+
+  return image;
 }
 
 function isDisplayablePhoto(photo) {
@@ -384,16 +406,9 @@ function renderDetails(row) {
   setMapPanelTitle(getDistrictLabel(row));
   elements.details.innerHTML = "";
 
-  const preview = getPreviewPhoto(row);
-  const previewUrl = getPhotoImageUrl(preview, "preview");
-  if (previewUrl) {
-    const image = document.createElement("img");
-    image.className = "preview";
-    image.src = previewUrl;
-    image.alt = row.title;
-    setImagePerformanceAttributes(image, { loading: "eager", fetchPriority: "high" });
-    image.addEventListener("error", () => image.remove(), { once: true });
-    elements.details.appendChild(image);
+  const previewImage = buildPreviewImage(row);
+  if (previewImage) {
+    elements.details.appendChild(previewImage);
   }
 
   const title = document.createElement("h2");
@@ -405,22 +420,8 @@ function renderDetails(row) {
   title.appendChild(titleLink);
   elements.details.appendChild(title);
 
-  const subtitleText = joinBits([row.city, getAlternateName(row)].filter(Boolean));
-
-  if (subtitleText) {
-    const subtitle = document.createElement("p");
-    subtitle.className = "muted";
-    subtitle.textContent = subtitleText;
-    elements.details.appendChild(subtitle);
-  }
-
   appendTextRow(elements.details, "District", getDistrictLabel(row));
   appendTextRow(elements.details, "City", row.city);
-  appendTextRow(
-    elements.details,
-    "Mosque Name",
-    row.mosqueName && row.mosqueName !== row.title ? row.mosqueName : "",
-  );
   appendTextRow(elements.details, "Imam", row.imamName);
   appendTextRow(elements.details, "Built", row.mosqueBuiltDate);
   appendTextRow(elements.details, "Women's Prayer Section", row.womensPrayerSection);
@@ -429,15 +430,7 @@ function renderDetails(row) {
     "Associated Shrine",
     row.shrineName && row.shrineName !== row.title ? row.shrineName : "",
   );
-  appendLinkRow(
-    elements.details,
-    "Location",
-    getMapLink(row),
-    getLocationLinkLabel(row),
-    "coordinate-link-inline",
-  );
   appendCommentsRow(elements.details, row.comments);
-  appendPhotosRow(elements.details, row);
   refreshDetailAnimation();
 }
 
@@ -452,6 +445,7 @@ function selectRow(rowId, { shouldFocusMap = true } = {}) {
   state.selectedId = rowId;
   setCurrentMapRowId(rowId);
   shrineMap.setSelected(rowId);
+  setStatus("");
   renderDetails(row);
   schedulePhotoLoad(rowId);
   openSidebar();
@@ -472,6 +466,7 @@ function clearSelection() {
   setCurrentMapRowId("");
   shrineMap?.setSelected("");
   clearDetails();
+  setStatus(getDirectoryStatus());
 }
 
 function hideTablePanel() {
@@ -671,9 +666,10 @@ async function loadPhotosForRow(rowId) {
     return;
   }
 
-  const directoryStatus = getDirectoryStatus();
   row.drivePhotosState = "loading";
-  setStatus(`${directoryStatus} ${UI_TEXT.loadingPhotos}`);
+  if (state.selectedId === rowId) {
+    setStatus(UI_TEXT.loadingPhotos);
+  }
 
   try {
     await loadDrivePhotosForRow(row);
@@ -686,7 +682,9 @@ async function loadPhotosForRow(rowId) {
     row.drivePhotosState = "failed";
     console.warn("Google Drive photos could not be loaded for this mosque.", error);
   } finally {
-    setStatus(directoryStatus);
+    if (state.selectedId === rowId) {
+      setStatus("");
+    }
   }
 }
 

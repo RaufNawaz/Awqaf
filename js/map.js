@@ -1,9 +1,13 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260625";
+import { APP_CONFIG } from "./config.js?v=cluster-20260701";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&
   typeof window.matchMedia === "function" &&
   window.matchMedia("(pointer: coarse)").matches;
+const PREFERS_REDUCED_MOTION =
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const EMPTY_PANEL_METRICS = {
   leftOccupied: 0,
   rightOccupied: 0,
@@ -111,19 +115,59 @@ export function createShrineMap({ onSelect, onMapClick }) {
     });
   }
 
-  const markerLayer = L.layerGroup().addTo(map);
   const markersById = new Map();
   let selectedId = "";
+
+  function createClusterIcon(cluster) {
+    const count = cluster.getChildCount();
+    const size = count < 10 ? "sm" : count < 50 ? "md" : "lg";
+    const dimension = size === "sm" ? 40 : size === "md" ? 48 : 58;
+    const classes = ["auqaf-cluster", `auqaf-cluster-${size}`];
+
+    if (
+      selectedId &&
+      cluster.getAllChildMarkers().some((marker) => marker.options.rowId === selectedId)
+    ) {
+      classes.push("auqaf-cluster-has-selected");
+    }
+
+    return L.divIcon({
+      html: `<div class="${classes.join(" ")}" aria-label="${count} mosques"><span>${count}</span></div>`,
+      className: "auqaf-cluster-wrap",
+      iconSize: [dimension, dimension],
+    });
+  }
+
+  const clusterConfig = APP_CONFIG.map.cluster || {};
+  const markerLayer = L.markerClusterGroup({
+    maxClusterRadius: clusterConfig.maxRadius ?? 56,
+    disableClusteringAtZoom: clusterConfig.disableAtZoom ?? APP_CONFIG.map.focusZoom,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: true,
+    zoomToBoundsOnClick: true,
+    chunkedLoading: true,
+    removeOutsideVisibleBounds: true,
+    animate: !PREFERS_REDUCED_MOTION,
+    iconCreateFunction: createClusterIcon,
+    polygonOptions: {
+      color: "#0f766e",
+      weight: 1.5,
+      opacity: 0.5,
+      fillColor: "#0f766e",
+      fillOpacity: 0.08,
+    },
+  }).addTo(map);
 
   function render(rows) {
     markerLayer.clearLayers();
     markersById.clear();
 
-    rows.forEach((row) => {
+    const markers = rows.map((row) => {
       const marker = L.marker([row.latitude, row.longitude], {
         icon: createMarkerIcon({ selected: row.id === selectedId }),
         title: row.title,
         bubblingMouseEvents: false,
+        rowId: row.id,
       });
 
       marker.bindTooltip(row.title, {
@@ -147,9 +191,11 @@ export function createShrineMap({ onSelect, onMapClick }) {
         onSelect(row.id);
       });
 
-      marker.addTo(markerLayer);
       markersById.set(row.id, marker);
+      return marker;
     });
+
+    markerLayer.addLayers(markers);
   }
 
   function setSelected(nextSelectedId) {
@@ -158,6 +204,8 @@ export function createShrineMap({ onSelect, onMapClick }) {
     markersById.forEach((marker, markerId) => {
       marker.setIcon(createMarkerIcon({ selected: markerId === selectedId }));
     });
+
+    markerLayer.refreshClusters();
   }
 
   function fitToRows(rows) {
@@ -174,16 +222,40 @@ export function createShrineMap({ onSelect, onMapClick }) {
     const marker = markersById.get(row.id);
     if (!marker) return;
 
-    const targetZoom = Math.max(map.getZoom(), APP_CONFIG.map.focusZoom);
-    const { leftOccupied, rightOccupied, topOccupied, bottomOccupied } = getVisiblePanelMetrics();
-    const offsetX = (leftOccupied - rightOccupied) / 2;
-    const offsetY = (topOccupied - bottomOccupied) / 2;
-    const targetPoint = map.project(marker.getLatLng(), targetZoom).subtract([offsetX, offsetY]);
-    const shiftedLatLng = map.unproject(targetPoint, targetZoom);
+    const applySidebarOffsetFocus = () => {
+      // zoomToShowLayer can invoke this up to a zoom-animation later; by then
+      // the user may have picked another mosque or the markers may have been
+      // re-rendered, so re-check before moving the map.
+      if (row.id !== selectedId || markersById.get(row.id) !== marker) {
+        return;
+      }
 
-    map.flyTo(shiftedLatLng, targetZoom, {
-      duration: 0.55,
-    });
+      const targetZoom = Math.max(map.getZoom(), APP_CONFIG.map.focusZoom);
+      const { leftOccupied, rightOccupied, topOccupied, bottomOccupied } =
+        getVisiblePanelMetrics();
+      const offsetX = (leftOccupied - rightOccupied) / 2;
+      const offsetY = (topOccupied - bottomOccupied) / 2;
+      const targetPoint = map.project(marker.getLatLng(), targetZoom).subtract([offsetX, offsetY]);
+      const shiftedLatLng = map.unproject(targetPoint, targetZoom);
+
+      if (PREFERS_REDUCED_MOTION) {
+        map.setView(shiftedLatLng, targetZoom, { animate: false });
+        return;
+      }
+
+      map.flyTo(shiftedLatLng, targetZoom, {
+        duration: 0.55,
+      });
+    };
+
+    // A marker hidden inside a cluster has no position on screen to fly to;
+    // zoomToShowLayer expands clusters until it is individually visible first.
+    if (markerLayer.getVisibleParent(marker) !== marker) {
+      markerLayer.zoomToShowLayer(marker, applySidebarOffsetFocus);
+      return;
+    }
+
+    applySidebarOffsetFocus();
   }
 
   function invalidateSize() {

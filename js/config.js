@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  title: "Awqaf Directory",
+  title: "Auqaf Directory",
   dataSource: {
     // This stays blank because the app is using the sheet's published CSV URL below.
     spreadsheetId: "",
@@ -25,11 +25,27 @@ export const APP_CONFIG = {
       hero: "w1200",
     },
   },
+  // Repo-served photo thumbnails synced from Drive by
+  // .github/workflows/sync-photos.yml (see scripts/sync-photos.mjs). The site
+  // prefers these same-origin files and only falls back to live Drive
+  // thumbnails above for photos the sync hasn't picked up yet.
+  localPhotos: {
+    enabled: true,
+    manifestUrl: "./photos/index.json",
+  },
   map: {
     defaultCenter: [30.3753, 69.3451],
     defaultZoom: 6,
     maxFitZoom: 13,
     focusZoom: 15,
+    // Marker clustering (Leaflet.markercluster). maxRadius is the cluster
+    // grab radius in px (lower = clusters split sooner); disableAtZoom is the
+    // zoom level at which clustering turns off entirely so street-level views
+    // always show individual mosques.
+    cluster: {
+      maxRadius: 56,
+      disableAtZoom: 15,
+    },
     primaryLayer: "Streets (MapTiler)",
     layers: [
       {

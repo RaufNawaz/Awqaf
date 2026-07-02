@@ -1,6 +1,6 @@
 # Awqaf Website Handoff
 
-Last updated: 2026-06-25
+Last updated: 2026-07-01
 
 ## 1. Project Overview
 
@@ -18,9 +18,14 @@ The site is plain HTML, CSS, and browser JavaScript. There is no build step, pac
 |-- index.html              Main map/directory page
 |-- mosque.html             Individual mosque detail page
 |-- style.css               Shared styling for map, drawer, and detail page
-|-- sw.js                   Service worker that caches Drive thumbnails
+|-- sw.js                   Service worker that caches Drive thumbnails and local photos
 |-- README.md               Public setup and usage notes
 |-- PROJECT_HANDOFF.md      This handoff document
+|-- photos/                 Repo-committed WebP thumbnails + index.json manifest (synced from Drive)
+|-- scripts/
+|   `-- sync-photos.mjs     Node/CI script that syncs Drive photos into photos/
+|-- .github/workflows/
+|   `-- sync-photos.yml     GitHub Action that runs the sync on a schedule or manually
 `-- js/
     |-- app.js              Main map page controller
     |-- config.js           Data source, photo source, map layer config, CSV columns
@@ -106,16 +111,20 @@ Recommended file naming:
 
 ```text
 MosqueName_M.jpg
-MosqueName_I_1.jpg
+MosqueName_I.jpg
 MosqueName_I_2.jpg
-MosqueName_O_1.jpg
+MosqueName_O.jpg
 ```
 
 Meaning:
 
 - `_M`: main/default photo.
-- `_I_#`: inside photo sequence.
-- `_O_#`: outside photo sequence.
+- `_I` or `_I_#`: inside photo. The `_#` is only required when uploading more
+  than one inside photo for the same mosque (`_I_1`, `_I_2`, ...); a bare `_I`
+  is fine for a single photo, and is in fact the convention most of the
+  existing Drive folder actually uses. Files without a number are ordered by
+  upload time (`assignAutoSequences()` in `js/drive-photos.js`).
+- `_O` or `_O_#`: outside photo, same rule.
 
 Legacy numbered files are still accepted:
 
@@ -126,6 +135,46 @@ MosqueName_2.jpg
 ```
 
 The `MosqueName` part should match one of the row identity fields, preferably `Mosque Name`.
+
+### 6.1 Local Photo Sync (GitHub Action)
+
+Hotlinked Drive thumbnails work, but Drive is not an image CDN -- rate limits
+and variable latency make photos feel slow. A GitHub Action
+(`.github/workflows/sync-photos.yml`, running `scripts/sync-photos.mjs`)
+mirrors Drive photos into the repo as same-origin, pre-sized WebP thumbnails
+so the deployed site serves them from the GitHub Pages CDN instead of
+hotlinking Drive on every view.
+
+- The Action runs nightly and can also be triggered manually
+  (`workflow_dispatch`). It intentionally never runs on `push`, since it
+  commits back to the repo and a push trigger would loop.
+- It lists the Drive folder via the same Apps Script endpoint the browser
+  uses, diffs against the committed `photos/index.json` manifest by Drive
+  file id and `modifiedTime`, and only downloads/converts what changed, so
+  commits stay small.
+- Each changed photo is written as two WebP sizes (`~w400` small, `~w1200`
+  large) under `photos/<mosque-slug>/`, and `photos/index.json` is rewritten
+  to match. Files for photos removed from Drive are deleted the same way.
+- Staff upload workflow is unchanged: keep using the `_M` / `_I_#` / `_O_#`
+  naming convention in the same Drive folder. The Action is what picks up new
+  uploads; there is no manual publishing step.
+
+Two constraints specific to deploying on GitHub Pages:
+
+- **No Git LFS for served images.** GitHub Pages does not serve LFS objects
+  (they show up as broken pointer files), so committed thumbnails must be
+  ordinary files in the repo.
+- **Only generated thumbnails are committed, never full-resolution
+  originals.** Drive remains the permanent archive. This keeps `photos/`
+  small relative to GitHub Pages' repo-size and bandwidth limits.
+
+At runtime, `js/drive-photos.js` builds a local photo index from
+`photos/index.json` (`loadLocalPhotoIndex()`) and merges it with the live
+Drive listing (`loadRemoteDrivePhotoIndex()`) inside `loadDrivePhotoIndex()`.
+Local entries win when a mosque has been synced; the Drive listing fills in
+anything not synced yet. Row matching, the map pop-up preview, and the
+detail-page gallery/hero all read the same photo entry shape regardless of
+source, so they needed no changes.
 
 ## 7. Apps Script Setup
 
@@ -178,21 +227,25 @@ These changes reduce both metadata work and actual image bytes.
 
 ## 9. Service Worker
 
-`sw.js` handles only Drive thumbnail requests:
+`sw.js` handles three kinds of requests, each in its own cache:
 
 ```text
-https://drive.google.com/thumbnail?id=...&sz=...
+https://drive.google.com/thumbnail?id=...&sz=...   (awqaf-drive-thumbnails-v2)
+<origin>/photos/index.json                          (awqaf-photo-manifest-v1)
+<origin>/photos/...                                 (awqaf-local-photos-v1)
 ```
 
 Behavior:
 
-- Cache-first for Drive thumbnails.
-- Keeps up to 180 thumbnail entries.
+- Cache-first for Drive thumbnails and local `photos/` image files.
+- Network-first (falling back to cache) for `photos/index.json`, so a fresh
+  sync is picked up quickly instead of being pinned by an old cached manifest.
+- Keeps up to 180 Drive thumbnail entries and 400 local photo entries.
 - Ignores map tiles, CSV, scripts, CSS, and HTML.
 - Works on `http://localhost` and HTTPS.
 - Does not work from `file://`.
 
-If thumbnail behavior changes, increment the cache name in `sw.js`, for example from `awqaf-drive-thumbnails-v1` to `awqaf-drive-thumbnails-v2`.
+If caching behavior changes, increment the relevant cache name in `sw.js`, for example from `awqaf-drive-thumbnails-v2` to `awqaf-drive-thumbnails-v3`.
 
 ## 10. Map Page Flow
 
@@ -262,12 +315,15 @@ If changing providers, update tile URLs, attributions, and any required API keys
 Cache layers:
 
 - Browser HTTP cache for normal static assets.
-- Version query strings on JS modules, currently `photos-20260625`.
+- Version query strings on JS modules, currently `cluster-20260701`.
 - Apps Script cache, described in `README.md`.
 - Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
 - In-memory Drive photo index for the current page session.
 - In-memory row match cache for selected rows.
 - Service worker thumbnail cache for repeated Drive images.
+- Service worker cache-first store for repo-served `photos/` thumbnails, plus
+  a network-first cache for the `photos/index.json` manifest.
+- Committed `photos/index.json`, refreshed on each GitHub Action sync run.
 
 When photos are added to Drive:
 
@@ -304,6 +360,42 @@ Photos do not appear:
 - Confirm Drive folder permissions allow public viewing.
 - Confirm photo file names match mosque names.
 - Check whether localStorage has an old photo list; clear site data for immediate retesting.
+
+Only the main photo appears, inside/outside photos are missing:
+
+- This used to be a parsing bug, not a content gap: most of the live Drive
+  folder names inside/outside photos as bare `MosqueName_I` / `MosqueName_O`
+  (no trailing sequence number), but `parseNamedPhoto()` originally required
+  `_I_#` / `_O_#`, so those files were silently skipped. Fixed 2026-07-01 --
+  the parser now accepts both forms and auto-numbers files with no explicit
+  sequence (`assignAutoSequences()` in `js/drive-photos.js`, mirrored in
+  `scripts/sync-photos.mjs`). If this regresses, check that fix is still in
+  place before assuming it's a content gap again.
+
+All photos stopped appearing mid-session (not just for one mosque, and not
+tied to any particular photo's naming):
+
+- Fixed 2026-07-01 -- `loadDrivePhotoIndex()` in `js/drive-photos.js` caches
+  its merged photo index in a module-level variable so it's only built once
+  per page load. The cache-hit check used to be plain truthiness
+  (`if (drivePhotoIndex) {...}`), but an empty `Map` is still truthy in
+  JavaScript. If the very first attempt to build the index for the whole
+  session came back empty (e.g. a one-off Apps Script cold-start timeout or
+  any transient network failure -- both `loadLocalPhotoIndex()` and
+  `loadRemoteDrivePhotoIndex()` fail safe to an empty Map rather than
+  throwing), that empty result got locked in as "the" answer for the rest of
+  the page session: every mosque showed no photos, with no console error,
+  until a full reload. The guard now checks `drivePhotoIndex?.size`, so an
+  empty result is retried on the next photo request instead of being
+  permanently cached. If this regresses, that's the first thing to check.
+
+The bottom-of-page gallery repeats the same photo shown at the top:
+
+- The gallery intentionally excludes the main (`_M`) photo, since it's already
+  shown as the hero/thumbnail. `renderPage()` in `js/mosque.js` filters
+  `buildPhotoItems(row)`'s full list down to `type !== "main"` before passing
+  it to `renderGallerySection()`. If a duplicate reappears, check that filter
+  is still applied before the gallery render call.
 
 Photos appear slowly:
 
