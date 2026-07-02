@@ -85,7 +85,17 @@ of the deployed site. Do not rely on it.
   in `js/map.js`; tuning knobs are `APP_CONFIG.map.cluster`
   (`maxRadius`, `disableAtZoom`) in `js/config.js`; badge styles are the
   `.auqaf-cluster*` rules in `style.css`. `waitForLibraries()` in `js/app.js`
-  also waits for `window.L.markerClusterGroup` before boot.
+  also waits for `window.L.markerClusterGroup` before boot. To tune, edit the
+  config knobs only; to remove clustering entirely, follow the step-by-step
+  recipe in `PROJECT_HANDOFF.md` §18 "Marker clustering". Known trade-off:
+  `disableAtZoom: 15` means spiderfy never activates and exactly co-located
+  pins overlap at street zoom (set `disableAtZoom: null` to trade back).
+- **Inline label icons**: the `ICONS` map in `js/utils.js` (12 static SVG
+  strings) feeds the detail-page fact list / location cards / directions
+  button (`js/mosque.js`) and the pop-up rows (`appendTextRow` in
+  `js/app.js`); styled by `.icon-inline`. Hard rule: icon strings are the
+  ONLY markup injected raw — all CSV-derived text stays in
+  `textContent`/`escapeHtml()`. Never build icon markup from sheet data.
 - **District names** come from the CSV `Zone` column (`APP_CONFIG.columns.zone`)
   and are read in `normalizeRow()` in `js/data.js` as `row.zone`, passed through
   `applyDistrictNameFix()` against the `DISTRICT_NAME_FIXES` map (also in
@@ -239,15 +249,46 @@ python3 -m http.server 8765
   `.mosque-section-tab`; `.mosque-section-tab-active` adds the green gradient
   (currently unused by default — no tab is active-styled out of the box).
   Toolbar links are `.mosque-toolbar-link`.
-- The green accent is `var(--mosque-accent)`.
+- **One brand green**: `:root --accent #0f766e` is the accent for BOTH pages —
+  `--mosque-accent` is an alias of it, not a second green. Don't reintroduce
+  the old `#1f5e56` family.
+- **Tokens**: `:root` owns `--shadow-sm/md/lg`, `--radius-control/card/media`
+  (6/12/12px — controls vs cards vs images), and `--space-1..7`
+  (4/8/12/16/24/32/40). `--mosque-bg/-bg-soft/-surface/-muted/-shadow-*` alias
+  `:root`; `--mosque-border`/`--mosque-text`/`--mosque-accent-soft` are
+  DELIBERATELY unmerged (visible deltas — see `PROJECT_HANDOFF.md` §18 before
+  touching). Deliberate off-scale spacing: 10px directory-row density, 20px
+  sidebar cluster, 28px page rhythm, 36px column gutter, 18px map-edge insets.
+- **Type**: map/sidebar text is in rem (Leaflet geometry and JS `divIcon`
+  sizes stay px). Detail-page display scale: title 3.2rem (compact 2.4),
+  section h2 2rem, sidebar h3 1.5rem, lede 1.05rem. Small uppercase labels
+  carry 0.06–0.08em tracking; buttons/tabs are sentence case, weight 700.
+- **Contrast floor**: label/muted grays must clear 4.5:1 on white —
+  `--muted #647084` (5.01:1) is the approved label gray; `#6a7b8e` failed AA
+  and was removed. Hover-lift is only for real links; static cards don't move.
+- The green accent is `var(--mosque-accent)` on the detail page (an alias of
+  `--accent`).
+- `PROJECT_HANDOFF.md` §18 is the decisions log: what shipped in the 2026-07
+  design rounds, why, and the minimal revert recipe for each (clustering,
+  tokens, type scale, icons, metadata). Check it before undoing anything.
 
 ## Deployment
 
-Static host (GitHub Pages, Netlify, Cloudflare Pages). Push the repo root; serve
-`index.html`, `mosque.html`, `style.css`, `sw.js`, `js/`, and `photos/` over
-HTTPS (the service worker needs HTTPS or localhost). No build artifact for the
-site itself — `photos/` is kept up to date by the `sync-photos` GitHub Action,
-not by a deploy-time build step.
+Live site: **GitHub Pages builds from the default branch `1.1`** —
+**pushing/merging to `1.1` IS a production deploy** (rebuilds in ~1–2 min;
+live at `https://raufnawaz.github.io/Awqaf/`). Do feature work on a branch and
+merge to `1.1` deliberately. `origin/main` is stale and unused. Serve
+`index.html`, `mosque.html`, `style.css`, `sw.js`, `favicon.svg`, `js/`, and
+`photos/` over HTTPS (the service worker needs HTTPS or localhost). No build
+artifact for the site itself — `photos/` is kept up to date by the
+`sync-photos` GitHub Action (nightly cron on `1.1`), not by a deploy-time
+build step.
+
+**Stale-branch photo gotcha**: the sync Action commits ~960 WebP files to
+`1.1` nightly, so a feature branch cut before the latest sync has a stale or
+empty `photos/index.json` and silently falls back to the slow live-Drive photo
+path — locally it looks like "photos are broken". Merge `1.1` into the branch
+before testing. (Full playbook: `PROJECT_HANDOFF.md` §15/§18.)
 
 ## Manual test checklist (after any change)
 

@@ -49,9 +49,18 @@ Then open the local URL the server prints, usually `http://localhost:3000` or `h
 
 ## How to deploy to GitHub Pages
 
+This repo is already set up: **GitHub Pages publishes the default branch
+`1.1`**, so pushing or merging to `1.1` deploys to production
+(`https://raufnawaz.github.io/Awqaf/`) within a minute or two. Do feature work
+on a branch and merge to `1.1` when ready. The nightly `sync-photos` Action
+also commits to `1.1`, so merge `1.1` into long-lived branches before testing
+photos locally.
+
+For a fresh fork/copy:
+
 1. Push this folder to a GitHub repository.
 2. In GitHub, open `Settings` -> `Pages`.
-3. Set the source to the branch you want to publish from, usually `main`, and the root folder `/`.
+3. Set the source to the branch you want to publish from and the root folder `/`.
 4. Save the setting and wait for GitHub Pages to publish the site.
 
 This project is plain static HTML/CSS/JS, so it does not need a build step.

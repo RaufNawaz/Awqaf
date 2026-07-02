@@ -1,6 +1,6 @@
 # Awqaf Website Handoff
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 ## 1. Project Overview
 
@@ -58,14 +58,32 @@ Other static servers are fine, for example `npx serve .` or `npx http-server .`.
 
 ## 4. Deployment Model
 
-This project deploys as static files. GitHub Pages, Netlify, Cloudflare Pages, or any basic static host can serve it.
+This project deploys as static files from **GitHub Pages, built from the
+default branch `1.1`** (repo `RaufNawaz/Awqaf`, live at
+`https://raufnawaz.github.io/Awqaf/`). **Pushing or merging to `1.1` IS a
+production deploy** — Pages rebuilds within ~1–2 minutes of the push.
+
+Branch model (as of 2026-07):
+
+- `1.1` — default branch, deployed, and the branch the nightly `sync-photos`
+  Action commits photos to. All feature branches merge back here.
+- `origin/main` — stale, predates the `1.1` workflow; not deployed.
+- Feature branches: **merge `1.1` in before local testing.** The photo sync
+  bot commits `photos/` (960 WebP files, ~166 MB) to `1.1` nightly, so any
+  branch cut before the latest sync has a stale or empty `photos/index.json`
+  and silently falls back to the slow live-Drive photo path. This bit us
+  twice — it looks like "photos are broken again" but is just a stale branch.
 
 Deployment checklist:
 
-1. Upload or push the full repository root.
-2. Make sure `index.html`, `mosque.html`, `style.css`, `sw.js`, and `js/` are published.
+1. Merge to `1.1` (or push it) — that is the deploy.
+2. Make sure `index.html`, `mosque.html`, `style.css`, `sw.js`, `favicon.svg`,
+   `js/`, and `photos/` are published.
 3. Serve over HTTPS in production so the service worker can run.
-4. After JavaScript changes, bump the `photos-YYYYMMDD` query string in HTML and module imports so browsers do not keep stale JS.
+4. After JavaScript changes, bump the `?v=` query string (current pattern:
+   `design-YYYYMMDD`; see CLAUDE.md "Cache busting") in HTML and module
+   imports so browsers do not keep stale JS. CSS/HTML-only changes do not
+   need a bump (`style.css` is linked without a version query).
 
 There is no build artifact to generate.
 
@@ -253,8 +271,10 @@ Main controller: `js/app.js`
 
 Startup flow:
 
-1. Wait for Leaflet and Papa Parse.
-2. Create the Leaflet map.
+1. Wait for Leaflet, Leaflet.markercluster, and Papa Parse
+   (`waitForLibraries()` also checks `window.L.markerClusterGroup`).
+2. Create the Leaflet map. Markers live in an `L.markerClusterGroup`, not a
+   plain layer group (see §18 "Marker clustering" for tuning/removal).
 3. Load CSV rows with `loadShrineRows({ includeDrivePhotos: false })`.
 4. Render markers and searchable district list.
 5. Show status like `N mosques across M districts`.
@@ -397,6 +417,36 @@ The bottom-of-page gallery repeats the same photo shown at the top:
   it to `renderGallerySection()`. If a duplicate reappears, check that filter
   is still applied before the gallery render call.
 
+No photos on a feature branch or fresh local checkout (live site is fine):
+
+- Almost certainly a stale branch, not a code bug. `photos/index.json` and the
+  `photos/` folder are committed to `1.1` by the nightly sync Action; a branch
+  cut before the latest sync has the empty stub and falls back to the live
+  Apps Script + Drive path, which is slow (2–10s listing) and flaky. Fix:
+  `git merge 1.1` into the branch. Verify with
+  `python3 -c "import json; print(len(json.load(open('photos/index.json'))['photos']))"`
+  — should print ~960, not 0.
+
+One mosque's pop-up preview is missing while others work:
+
+- First check the synced manifest actually has that mosque
+  (search `photos/index.json` for a normalized fragment of its name).
+- The pop-up `<img>` removes itself on a failed load
+  (`buildPreviewImage()` in `js/app.js` — `error` listener calls
+  `image.remove()`), so a transient thumbnail failure shows as "no photo"
+  with no error. Reload to retry.
+- `rowPhotoCache` in `js/drive-photos.js` caches per-row results (including
+  empty ones) for the page session; a row viewed while the photo index was
+  still failing keeps showing no photos until a full reload even after the
+  network recovers.
+
+A marker sits ~50 km from the real mosque:
+
+- 2–3 source-sheet rows store DMS coordinates (e.g. `31°33'49.5`) instead of
+  decimal degrees. `parseCoordinate()` in `js/utils.js` truncates these via
+  `parseFloat` to whole degrees, keeping the row but placing it far off. Fix
+  the sheet values (preferred) or teach `parseCoordinate()` DMS.
+
 Photos appear slowly:
 
 - Test through a real HTTP server, not `file://`.
@@ -437,3 +487,144 @@ The most important files for future maintenance are:
 - `sw.js` for thumbnail caching.
 
 If a future maintainer needs to make the photo system even faster, the next larger step would be moving Drive images into a real image CDN or static object storage with generated thumbnails. The current solution keeps the existing Google Drive workflow and removes the main redundant work without changing the content workflow.
+
+## 18. Design Decisions Log (2026-07) — what changed and how to undo it
+
+Every item below shipped in July 2026 (branches `1.2`, `1.2.0`,
+`design-polish`, all merged into `1.1`). Each entry says where the feature
+lives and the minimal revert path, so any of them can be pulled out without
+archaeology. After any JS revert, bump the `?v=` version string per CLAUDE.md.
+
+### Marker clustering (map page)
+
+- **What**: Leaflet.markercluster v1.5.3 from unpkg; markers live in an
+  `L.markerClusterGroup` with custom green badge icons in three size tiers
+  (<10 / <50 / 50+), density-encoded gradient depth, an amber ring when a
+  cluster contains the selected mosque, and `zoomToShowLayer()` in
+  `focusRow()` so selecting a clustered mosque expands its cluster first
+  (with a stale-callback guard so rapid re-selection can't fly to the wrong
+  mosque).
+- **Chosen options**: `maxClusterRadius 56`, `disableClusteringAtZoom 15`
+  (= `focusZoom`, so street level always shows individual pins). Both exposed
+  as `APP_CONFIG.map.cluster { maxRadius, disableAtZoom }` in `js/config.js`.
+  Known side effect: because clustering turns off at zoom 15,
+  `spiderfyOnMaxZoom` never activates and exactly co-located pins overlap at
+  high zoom. Set `disableAtZoom: null` to restore spiderfying instead.
+- **To tune**: edit `APP_CONFIG.map.cluster` only — no other file needed.
+- **To remove entirely**:
+  1. `index.html`: delete the two `leaflet.markercluster` tags
+     (`MarkerCluster.css` link + plugin `<script>`).
+  2. `js/app.js` `waitForLibraries()`: drop the
+     `typeof window.L.markerClusterGroup !== "function"` condition.
+  3. `js/map.js` `createShrineMap()`: replace the `L.markerClusterGroup({...})`
+     block with `const markerLayer = L.layerGroup().addTo(map);`, delete
+     `createClusterIcon()`, in `render()` swap the bulk
+     `markerLayer.addLayers(markers)` back to `marker.addTo(markerLayer)` per
+     marker, in `setSelected()` drop `markerLayer.refreshClusters()`, and in
+     `focusRow()` delete the `getVisibleParent`/`zoomToShowLayer` branch
+     (keep `applySidebarOffsetFocus`, which is the original pan/fly logic).
+  4. `js/config.js`: delete `APP_CONFIG.map.cluster`.
+  5. `style.css`: delete the `.auqaf-cluster*` rules (near `.shrine-dot`) and
+     the `.auqaf-cluster` lines in the reduced-motion block.
+
+### One brand green across both pages
+
+- **What**: the detail page's `--mosque-accent` / `--mosque-accent-strong`
+  alias the map page's `:root` `--accent #0f766e` / `--accent-strong`
+  (previously `#1f5e56` / `#184b45`, a second, slightly different green).
+  Old-green literals in gradients/hover borders were replaced with the
+  `#0f766e` family (`#12867d` gradient tops).
+- **To revert**: restore raw values in `.mosque-body` and grep `#12867d` /
+  `rgba(15, 118, 110,` in the `.mosque-*` rules back to the old literals.
+  Nothing outside `style.css` is involved.
+
+### Shared design tokens (partial by design)
+
+- **Merged now** (values were identical or the token was dead):
+  `--mosque-bg`, `--mosque-bg-soft`, `--mosque-surface`, `--mosque-muted`,
+  `--mosque-shadow-sm/md/lg` all alias `:root` tokens; `:root` owns
+  `--shadow-sm/md/lg`, `--radius-control/card/media`, `--space-1..7`.
+- **Deliberately DEFERRED** (do not "finish" this blindly): `--mosque-border`
+  (rgba vs solid, ~7% lighter), `--mosque-text` (`#172739` vs `#172033`,
+  ΔE ≈ 4 on all body text), `--mosque-accent-soft` (translucent vs solid).
+  Merging any of these visibly changes the detail page — screenshot before
+  and after if you attempt it.
+
+### Radius hierarchy and spacing scale
+
+- **What**: flat 8px radius replaced by `--radius-control: 6px` (buttons,
+  inputs, tabs, tooltips, status chip), `--radius-card: 12px` (sidebar panel,
+  cards, dropdown), `--radius-media: 12px` (images, iframes). 999px pills/dots
+  stay literal. High-traffic off-scale paddings/gaps snapped to the
+  `--space-*` scale (3→4, 7→8, 11→12, 14/17/18→16, 22/26→24, 34→32, 42→40).
+- **Deliberate off-scale exceptions — do not snap**: the 10px directory-row
+  density, the 20px cluster (sidebar inner padding etc.), 28px page rhythm,
+  the 36px column gutter, and the 18px map-edge insets (which mirror
+  `#sidebar`'s 18px offsets).
+- **To revert**: change the three `--radius-*` values back to 8px in `:root`
+  (one line each); spacing tokens can be re-literalized selector by selector.
+
+### Detail-page type scale ("reference" not "magazine")
+
+- **What/why**: hero title 4.4rem→3.2rem (compact 3→2.4rem), section
+  h2 2.45rem→2rem, standalone sidebar h3 1.8→1.5rem, lede 1.12→1.05rem;
+  responsive echoes 2.5/1.7rem (1024px) and 1.9/1rem (720px); line-heights
+  loosened (0.98/1 → 1.05/1.1/1.15); hero media offset 42→28px and divider
+  44/36→36/30px retuned for the shorter title block. Rationale: the old 70px
+  title pushed facts/photos below the fold and clashed with the
+  database-style body (see DESIGN_CRITIQUE.md).
+- **To revert**: all in `style.css` under `.mosque-title` /
+  `.mosque-section-heading` / `.mosque-lede` and the two media queries.
+
+### Typography and affordance rules
+
+- Small uppercase labels carry 0.06–0.08em letter-spacing; buttons and
+  section tabs are sentence case at weight 700 (labels in `UI_TEXT` are
+  already sentence case — do not re-add `text-transform: uppercase`).
+- `.details-title-link` (pop-up title) underlines on hover/focus only.
+- Hover-lift (translateY + shadow) is an affordance reserved for actual
+  links; static cards (`.mosque-sidebar-card`, `.mosque-coordinate-card`,
+  `.mosque-map-wrap`) intentionally have no hover transform.
+- Contrast: `.mosque-fact dt` uses `var(--mosque-muted)` `#647084` = 5.01:1
+  on the white card (the old `#6a7b8e` was 4.34:1 and failed AA). If you
+  change any label gray, keep ≥ 4.5:1 on white.
+- Map-page/sidebar type is in rem (exact conversions from the old px values);
+  Leaflet control geometry and the JS `divIcon` pixel sizes stay px on
+  purpose.
+
+### Inline SVG icon set
+
+- **What**: `ICONS` (frozen object, 12 stroke-based 24-grid SVGs) exported
+  from `js/utils.js`; used in the detail-page fact list (`renderFactRows` /
+  `publicFacts` in `js/mosque.js`), the address/coordinates cards, the
+  Get-directions button, and the map pop-up rows (`appendTextRow` /
+  `appendCommentsRow` in `js/app.js`). Styled by `.icon-inline` in
+  `style.css` (em-sized, `var(--accent)` at 0.85 opacity, aria-hidden).
+- **Safety rule (load-bearing)**: icon strings are static markup injected via
+  `insertAdjacentHTML`/template interpolation, while all CSV-derived text
+  stays in `textContent` / `escapeHtml()`. Never build icon markup from CSV
+  data, and never widen the interpolation to anything user-derived.
+- **To remove**: drop the `icon` fields from `publicFacts`, the `${ICONS.*}`
+  interpolations in `js/mosque.js`, the icon args in `js/app.js` call sites
+  (the `iconSvg` param defaults to empty), the `ICONS` block in
+  `js/utils.js`, and `.icon-inline` in `style.css`. Bump `?v=`.
+
+### Page metadata / favicon (1.2.0)
+
+- `favicon.svg` (dome mark), `theme-color`, meta descriptions, and Open Graph
+  tags on both pages. `og:image` is intentionally absent — it needs an
+  absolute URL of the deployed site
+  (`https://raufnawaz.github.io/Awqaf/...`); add it with a representative
+  image if link previews should carry a picture.
+
+### Known data quirks (source sheet, not code)
+
+- `DISTRICT_NAME_FIXES` in `js/data.js` covers all six known Zone typos;
+  `Burewala`, `Shahkot`, and `DG Khan` are legitimate names/abbreviations,
+  not typos — do not "fix" them.
+- One sheet row is a literal `End` sentinel (every field "End"); it is
+  dropped by coordinate validation and never reaches the UI.
+- 2–3 rows have DMS coordinates (see Troubleshooting §15).
+- Roughly two dozen mosques have a main photo but no inside/outside upload —
+  a content gap, not a matching bug (verified against the full Drive listing
+  2026-07-01: all 960 files parse and 308/308 mosque keys match CSV rows).
