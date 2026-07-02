@@ -202,7 +202,7 @@ limited). See `PROJECT_HANDOFF.md` §6.1 for the full design. The short version:
 ## Cache busting (do this whenever JS changes)
 
 Every module import and both `<script>` tags carry a version query string,
-currently `?v=cluster-20260701`. When you change any JS:
+currently `?v=design-20260702`. When you change any JS:
 
 1. Bump the version string **everywhere** it appears — in `index.html`,
    `mosque.html`, and in the `import ... from "./x.js?v=..."` lines and the
@@ -215,7 +215,7 @@ currently `?v=cluster-20260701`. When you change any JS:
 Grep for the current version before editing so you catch every occurrence:
 
 ```bash
-grep -rn "cluster-20260701" .
+grep -rn "design-20260702" .
 ```
 
 ## Running locally

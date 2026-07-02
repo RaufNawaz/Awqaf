@@ -315,7 +315,7 @@ If changing providers, update tile URLs, attributions, and any required API keys
 Cache layers:
 
 - Browser HTTP cache for normal static assets.
-- Version query strings on JS modules, currently `cluster-20260701`.
+- Version query strings on JS modules, currently `design-20260702`.
 - Apps Script cache, described in `README.md`.
 - Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
 - In-memory Drive photo index for the current page session.

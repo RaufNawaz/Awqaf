@@ -1,12 +1,12 @@
-import { APP_CONFIG } from "./config.js?v=cluster-20260701";
+import { APP_CONFIG } from "./config.js?v=design-20260702";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=cluster-20260701";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=cluster-20260701";
-import { createShrineMap } from "./map.js?v=cluster-20260701";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=cluster-20260701";
+} from "./data.js?v=design-20260702";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=design-20260702";
+import { createShrineMap } from "./map.js?v=design-20260702";
+import { ICONS, escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=design-20260702";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -19,7 +19,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=cluster-20260701";
+const PAGE_VERSION_QUERY = "v=design-20260702";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -255,7 +255,7 @@ function clearDetails() {
   resetMapPanelTitle();
 }
 
-function appendTextRow(container, label, value) {
+function appendTextRow(container, label, value, iconSvg = "") {
   if (!value) return;
 
   const row = document.createElement("div");
@@ -263,6 +263,11 @@ function appendTextRow(container, label, value) {
 
   const labelEl = document.createElement("b");
   labelEl.textContent = `${label}:`;
+  // Static markup from ICONS only — label/value stay plain textContent so
+  // CSV-derived text is never parsed as HTML.
+  if (iconSvg) {
+    labelEl.insertAdjacentHTML("afterbegin", iconSvg);
+  }
   row.appendChild(labelEl);
 
   const valueEl = document.createElement("span");
@@ -303,6 +308,7 @@ function appendCommentsRow(container, comments) {
 
   const labelEl = document.createElement("b");
   labelEl.textContent = "Comments:";
+  labelEl.insertAdjacentHTML("afterbegin", ICONS.comments);
   row.appendChild(labelEl);
 
   const body = document.createElement("div");
@@ -420,15 +426,21 @@ function renderDetails(row) {
   title.appendChild(titleLink);
   elements.details.appendChild(title);
 
-  appendTextRow(elements.details, "District", getDistrictLabel(row));
-  appendTextRow(elements.details, "City", row.city);
-  appendTextRow(elements.details, "Imam", row.imamName);
-  appendTextRow(elements.details, "Built", row.mosqueBuiltDate);
-  appendTextRow(elements.details, "Women's Prayer Section", row.womensPrayerSection);
+  appendTextRow(elements.details, "District", getDistrictLabel(row), ICONS.district);
+  appendTextRow(elements.details, "City", row.city, ICONS.city);
+  appendTextRow(elements.details, "Imam", row.imamName, ICONS.imam);
+  appendTextRow(elements.details, "Built", row.mosqueBuiltDate, ICONS.calendar);
+  appendTextRow(
+    elements.details,
+    "Women's Prayer Section",
+    row.womensPrayerSection,
+    ICONS.women,
+  );
   appendTextRow(
     elements.details,
     "Associated Shrine",
     row.shrineName && row.shrineName !== row.title ? row.shrineName : "",
+    ICONS.shrine,
   );
   appendCommentsRow(elements.details, row.comments);
   refreshDetailAnimation();

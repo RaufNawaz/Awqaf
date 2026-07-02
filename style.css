@@ -262,6 +262,18 @@ h1 {
   font-weight: 700;
 }
 
+/* Inline label icons (static SVGs from js/utils.js ICONS). Sized in em so
+   they track each label's font size; currentColor + the accent tint keeps
+   them subordinate to the text. */
+.icon-inline {
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.45em;
+  vertical-align: -0.18em;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
 .coordinate-link-inline {
   font-family: var(--font-mono);
   font-size: 0.95em;

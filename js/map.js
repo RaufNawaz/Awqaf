@@ -1,4 +1,4 @@
-import { APP_CONFIG } from "./config.js?v=cluster-20260701";
+import { APP_CONFIG } from "./config.js?v=design-20260702";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&

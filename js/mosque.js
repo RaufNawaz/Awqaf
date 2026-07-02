@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js?v=cluster-20260701";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=cluster-20260701";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=cluster-20260701";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=cluster-20260701";
+import { APP_CONFIG } from "./config.js?v=design-20260702";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=design-20260702";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=design-20260702";
+import { ICONS, escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=design-20260702";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -37,7 +37,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=cluster-20260701";
+const PAGE_VERSION_QUERY = "v=design-20260702";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -303,9 +303,11 @@ function renderFactRows(items) {
     <dl class="mosque-fact-list">
       ${filtered
         .map(
-          ({ label, value }) => `
+          // icon is static markup from ICONS, never CSV-derived — only the
+          // label/value text goes through escapeHtml().
+          ({ label, value, icon }) => `
             <div class="mosque-fact">
-              <dt>${escapeHtml(label)}</dt>
+              <dt>${icon || ""}${escapeHtml(label)}</dt>
               <dd>${escapeHtml(value)}</dd>
             </div>
           `,
@@ -514,14 +516,14 @@ function renderPage(rows, row) {
   const directionsUrl = buildDirectionsUrl(row.latitude, row.longitude);
   const fullMapUrl = row.whatsappLocationUrl || directionsUrl;
   const publicFacts = [
-    { label: UI_TEXT.registeredName, value: getRegisteredName(row) },
-    { label: UI_TEXT.onSiteName, value: getOnSiteName(row) },
-    { label: UI_TEXT.district, value: getDistrictLabel(row) },
-    { label: UI_TEXT.city, value: getCityLabel(row) },
-    { label: UI_TEXT.imam, value: row.imamName },
-    { label: UI_TEXT.built, value: row.mosqueBuiltDate },
-    { label: UI_TEXT.womensPrayer, value: row.womensPrayerSection },
-    { label: UI_TEXT.associatedShrine, value: getAssociatedShrine(row) },
+    { label: UI_TEXT.registeredName, value: getRegisteredName(row), icon: ICONS.tag },
+    { label: UI_TEXT.onSiteName, value: getOnSiteName(row), icon: ICONS.signpost },
+    { label: UI_TEXT.district, value: getDistrictLabel(row), icon: ICONS.district },
+    { label: UI_TEXT.city, value: getCityLabel(row), icon: ICONS.city },
+    { label: UI_TEXT.imam, value: row.imamName, icon: ICONS.imam },
+    { label: UI_TEXT.built, value: row.mosqueBuiltDate, icon: ICONS.calendar },
+    { label: UI_TEXT.womensPrayer, value: row.womensPrayerSection, icon: ICONS.women },
+    { label: UI_TEXT.associatedShrine, value: getAssociatedShrine(row), icon: ICONS.shrine },
   ];
   pageEl.innerHTML = `
     <div class="mosque-shell">
@@ -579,13 +581,13 @@ function renderPage(rows, row) {
                 ${
                   addressLabel
                     ? `<div class="mosque-coordinate-card mosque-address-card">
-                        <span>${escapeHtml(UI_TEXT.address)}</span>
+                        <span>${ICONS.pin}${escapeHtml(UI_TEXT.address)}</span>
                         <p class="mosque-address-text">${escapeHtml(addressLabel)}</p>
                       </div>`
                     : ""
                 }
                 <div class="mosque-coordinate-card">
-                  <span>${escapeHtml(UI_TEXT.coordinates)}</span>
+                  <span>${ICONS.coordinates}${escapeHtml(UI_TEXT.coordinates)}</span>
                   <a
                     class="mosque-coordinate-link"
                     href="${escapeHtml(fullMapUrl)}"
@@ -599,7 +601,7 @@ function renderPage(rows, row) {
                 <div class="mosque-action-row mosque-action-row-compact">
                   <a class="mosque-btn" href="${escapeHtml(
                     directionsUrl,
-                  )}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+                  )}" target="_blank" rel="noopener noreferrer">${ICONS.directions}${escapeHtml(
                     UI_TEXT.getDirections,
                   )}</a>
                 </div>
