@@ -11,6 +11,19 @@
   --link: #0b5f86;
   --border: #d9e1e6;
   --shadow: 0 18px 38px rgba(15, 23, 42, 0.13);
+  --shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 16px 32px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 24px 48px rgba(15, 23, 42, 0.1);
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-media: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
   --font-ui: Inter, "Segoe UI", Arial, sans-serif;
   --font-display: Manrope, Inter, "Segoe UI", Arial, sans-serif;
   --font-mono: "Roboto Mono", "SFMono-Regular", Consolas, monospace;
@@ -62,7 +75,7 @@ body {
   box-sizing: border-box;
   z-index: 1000;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px);
   transition:
@@ -94,7 +107,7 @@ body {
   height: 40px;
   border: 1px solid var(--border);
   background: var(--panel);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   padding: 0;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
@@ -149,7 +162,7 @@ body {
 h1 {
   margin: 0 0 12px;
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 1.5625rem;
   font-weight: 800;
   line-height: 1.15;
 }
@@ -163,7 +176,7 @@ h1 {
 
 .muted {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.875rem;
   margin: 0 0 12px;
 }
 
@@ -171,16 +184,16 @@ h1 {
   margin: 8px 0 16px;
   padding: 8px 10px;
   border: 1px solid #e3e9ee;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: #f8fafb;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--muted);
   white-space: pre-wrap;
 }
 
 .details {
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.5;
 }
 
@@ -192,7 +205,7 @@ h1 {
 .details-title {
   margin: 0 0 12px;
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 800;
   line-height: 1.25;
 }
@@ -214,8 +227,8 @@ h1 {
   aspect-ratio: 7 / 5;
   max-height: 250px;
   object-fit: cover;
-  border-radius: 8px;
-  margin: 0 0 14px;
+  border-radius: var(--radius-media);
+  margin: 0 0 var(--space-4);
   display: block;
   border: 1px solid var(--border);
   /* Placeholder tone while the photo streams in; also reserves the box so
@@ -226,7 +239,7 @@ h1 {
 
 .row {
   margin: 0;
-  padding: 11px 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid #e7edf1;
 }
 
@@ -238,8 +251,8 @@ h1 {
 .row b {
   display: block;
   color: #263244;
-  margin: 0 0 3px;
-  font-size: 12px;
+  margin: 0 0 var(--space-1);
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -299,7 +312,7 @@ input:focus-visible {
   height: 104px;
   display: block;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-media);
   border: 1px solid var(--border);
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.1);
   transition:
@@ -316,16 +329,16 @@ input:focus-visible {
 
 .photo-thumb span {
   display: block;
-  margin-top: 7px;
+  margin-top: var(--space-2);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
 .photo-more-thumb {
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-media);
 }
 
 .photo-more-thumb img {
@@ -348,7 +361,7 @@ input:focus-visible {
   box-sizing: border-box;
   background: rgba(17, 24, 39, 0.46);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 800;
   text-align: center;
 }
@@ -360,7 +373,7 @@ input:focus-visible {
   min-height: 34px;
   padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.86);
   color: var(--link);
   font-weight: 700;
@@ -405,13 +418,13 @@ input:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 13px;
-  border-radius: 8px;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.96);
   cursor: pointer;
   box-shadow: var(--shadow);
-  font: 700 13px var(--font-ui);
+  font: 700 0.8125rem var(--font-ui);
   color: var(--text);
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
@@ -433,7 +446,7 @@ input:focus-visible {
   margin-top: 8px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow);
   overflow: hidden;
 }
@@ -456,10 +469,10 @@ input:focus-visible {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: #ffffff;
-  font: 600 13px var(--font-ui);
+  font: 600 0.8125rem var(--font-ui);
   color: #111827;
   outline: none;
 }
@@ -482,7 +495,7 @@ input:focus-visible {
   border-bottom: 1px solid #e5ebef;
   background: var(--panel);
   cursor: pointer;
-  font: 600 13px var(--font-ui);
+  font: 600 0.8125rem var(--font-ui);
   color: #111827;
   animation: list-item-enter 260ms var(--ease-out) both;
   animation-delay: var(--item-delay, 0ms);
@@ -510,7 +523,7 @@ input:focus-visible {
   background: var(--panel);
   border: 0;
   cursor: pointer;
-  font: 800 13px var(--font-ui);
+  font: 800 0.8125rem var(--font-ui);
   color: #111827;
 }
 
@@ -519,7 +532,7 @@ input:focus-visible {
 }
 
 .group-header .count {
-  font: 700 12px var(--font-ui);
+  font: 700 0.75rem var(--font-ui);
   color: var(--muted);
 }
 
@@ -556,7 +569,7 @@ input:focus-visible {
 
 .panel-empty {
   padding: 10px 12px;
-  font: 600 13px var(--font-ui);
+  font: 600 0.8125rem var(--font-ui);
   color: var(--muted);
 }
 
@@ -642,19 +655,19 @@ input:focus-visible {
 
 /* Denser clusters read both larger and deeper in tone. */
 .auqaf-cluster-sm {
-  font-size: 13px;
+  font-size: 0.8125rem;
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 58%),
     linear-gradient(180deg, #17948a, var(--accent));
 }
 
 .auqaf-cluster-md {
-  font-size: 15px;
+  font-size: 0.9375rem;
 }
 
 .auqaf-cluster-lg {
   --cluster-halo: 0 0 0 6px rgba(15, 118, 110, 0.14);
-  font-size: 17px;
+  font-size: 1.0625rem;
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 58%),
     linear-gradient(180deg, #0e6e66, #094f4a);
@@ -673,13 +686,13 @@ input:focus-visible {
 }
 
 .leaflet-tooltip {
-  border-radius: 8px !important;
+  border-radius: var(--radius-control) !important;
   padding: 6px 10px !important;
   border: 1px solid var(--border) !important;
   box-shadow: 0 12px 22px rgba(15, 23, 42, 0.14) !important;
   background: var(--panel) !important;
   color: var(--text) !important;
-  font: 600 12px var(--font-ui) !important;
+  font: 600 0.75rem var(--font-ui) !important;
 }
 
 .leaflet-tooltip-top:before {
@@ -710,7 +723,7 @@ input:focus-visible {
 
 .leaflet-control-layers {
   background: var(--panel) !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-card) !important;
   box-shadow: var(--shadow) !important;
   overflow: hidden;
 }
@@ -728,7 +741,7 @@ input:focus-visible {
 
 .leaflet-control-layers label {
   color: var(--text);
-  font: 700 13px var(--font-ui);
+  font: 700 0.8125rem var(--font-ui);
 }
 
 @keyframes rise-in {
@@ -804,21 +817,21 @@ input:focus-visible {
 }
 
 .mosque-body {
-  --mosque-bg: #eef2f3;
-  --mosque-bg-soft: #f8fafb;
-  --mosque-surface: #ffffff;
+  --mosque-bg: var(--bg);
+  --mosque-bg-soft: var(--panel-strong);
+  --mosque-surface: var(--panel);
   --mosque-border: rgba(23, 32, 51, 0.12);
   --mosque-border-soft: rgba(23, 32, 51, 0.09);
   --mosque-text: #172739;
-  --mosque-muted: #647084;
+  --mosque-muted: var(--muted);
   /* Single brand green shared with the map page (:root --accent) so the
      accent doesn't shift between the two pages. */
   --mosque-accent: var(--accent);
   --mosque-accent-strong: var(--accent-strong);
   --mosque-accent-soft: rgba(15, 118, 110, 0.1);
-  --mosque-shadow-lg: 0 24px 48px rgba(15, 23, 42, 0.1);
-  --mosque-shadow-md: 0 16px 32px rgba(15, 23, 42, 0.08);
-  --mosque-shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.06);
+  --mosque-shadow-lg: var(--shadow-lg);
+  --mosque-shadow-md: var(--shadow-md);
+  --mosque-shadow-sm: var(--shadow-sm);
   min-height: 100%;
   background: linear-gradient(180deg, #fbfcfd 0%, #f5f7f8 52%, var(--mosque-bg) 100%);
   color: var(--mosque-text);
@@ -832,7 +845,7 @@ input:focus-visible {
 .mosque-page {
   max-width: 1220px;
   margin: 0 auto;
-  padding: 28px 22px 64px;
+  padding: 28px var(--space-5) 64px;
   box-sizing: border-box;
 }
 
@@ -854,9 +867,9 @@ input:focus-visible {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 0 18px;
+  padding: 0 var(--space-4);
   border: 1px solid rgba(17, 17, 17, 0.12);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.92);
   color: var(--mosque-text);
   text-decoration: none;
@@ -883,7 +896,7 @@ input:focus-visible {
 .mosque-hero-top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  gap: 34px;
+  gap: var(--space-6);
   align-items: start;
 }
 
@@ -901,7 +914,7 @@ input:focus-visible {
   margin-top: 28px;
   aspect-ratio: 4 / 3;
   border: 1px solid var(--mosque-border-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-media);
   background: #e8eef0;
   box-shadow: var(--mosque-shadow-md);
   overflow: hidden;
@@ -994,9 +1007,9 @@ input:focus-visible {
   justify-content: center;
   min-height: 48px;
   min-width: 120px;
-  padding: 0 22px;
+  padding: 0 var(--space-5);
   border: 1px solid rgba(23, 39, 57, 0.2);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.84);
   color: var(--mosque-text);
   text-decoration: none;
@@ -1029,12 +1042,12 @@ input:focus-visible {
 
 .mosque-main {
   display: grid;
-  gap: 42px;
+  gap: var(--space-7);
 }
 
 .mosque-aside {
   display: grid;
-  gap: 26px;
+  gap: var(--space-5);
 }
 
 .mosque-article-section {
@@ -1044,7 +1057,7 @@ input:focus-visible {
 }
 
 .mosque-section-heading {
-  margin-bottom: 22px;
+  margin-bottom: var(--space-5);
 }
 
 .mosque-section-heading h2,
@@ -1059,7 +1072,7 @@ input:focus-visible {
 
 .mosque-richtext {
   display: grid;
-  gap: 18px;
+  gap: var(--space-4);
   max-width: 840px;
 }
 
@@ -1088,7 +1101,7 @@ input:focus-visible {
 .mosque-action-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: var(--space-4);
   margin-top: 24px;
 }
 
@@ -1103,7 +1116,7 @@ input:focus-visible {
   min-height: 50px;
   padding: 0 20px;
   border: 1px solid rgba(23, 39, 57, 0.14);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: #ffffff;
   color: var(--mosque-text);
   text-decoration: none;
@@ -1127,9 +1140,9 @@ input:focus-visible {
 }
 
 .mosque-sidebar-card {
-  padding: 24px 24px 26px;
+  padding: var(--space-5);
   border: 1px solid var(--mosque-border-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: #ffffff;
   box-shadow: var(--mosque-shadow-md);
   position: relative;
@@ -1157,7 +1170,7 @@ input:focus-visible {
 }
 
 .mosque-sidebar-brand {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-4);
   color: var(--mosque-accent);
   font-size: 0.86rem;
   font-weight: 800;
@@ -1203,12 +1216,12 @@ input:focus-visible {
 
 .mosque-gallery-section {
   display: grid;
-  gap: 22px;
+  gap: var(--space-5);
 }
 
 .mosque-map-section {
   display: grid;
-  gap: 18px;
+  gap: var(--space-4);
   margin-top: 24px;
 }
 
@@ -1224,16 +1237,16 @@ input:focus-visible {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
 .mosque-coordinate-card {
   flex: 0 1 260px;
   min-width: 220px;
-  padding: 17px 18px;
+  padding: var(--space-4);
   border: 1px solid var(--mosque-border-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: #ffffff;
   box-shadow: var(--mosque-shadow-sm);
   transition:
@@ -1291,7 +1304,7 @@ input:focus-visible {
 
 .mosque-map-wrap {
   border: 1px solid var(--mosque-border-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-media);
   background: #ffffff;
   box-shadow: var(--mosque-shadow-sm);
   overflow: hidden;
@@ -1311,15 +1324,15 @@ input:focus-visible {
 .mosque-nearby-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: var(--space-4);
 }
 
 .mosque-nearby-card {
   display: grid;
   gap: 8px;
-  padding: 22px 20px;
+  padding: var(--space-5) 20px;
   border: 1px solid var(--mosque-border-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: rgba(255, 255, 255, 0.96);
   text-decoration: none;
   box-shadow: var(--mosque-shadow-sm);
@@ -1353,13 +1366,13 @@ input:focus-visible {
 .mosque-gallery-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: var(--space-5);
 }
 
 .mosque-gallery-item {
   display: block;
   border: 1px solid var(--mosque-border-soft);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   background: rgba(255, 255, 255, 0.98);
   text-decoration: none;
   box-shadow: var(--mosque-shadow-sm);
@@ -1414,7 +1427,7 @@ input:focus-visible {
 
 .mosque-gallery-item span {
   display: block;
-  padding: 16px 18px 18px;
+  padding: var(--space-4);
   color: var(--mosque-muted);
   font-size: 0.98rem;
   font-weight: 700;
@@ -1531,7 +1544,7 @@ input:focus-visible {
 @media (max-width: 1024px) {
   .mosque-hero-top {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-    gap: 26px;
+    gap: var(--space-5);
   }
 
   .mosque-title {
@@ -1556,11 +1569,11 @@ input:focus-visible {
 
 @media (max-width: 720px) {
   .mosque-page {
-    padding: 20px 14px 44px;
+    padding: 20px var(--space-4) var(--space-7);
   }
 
   .mosque-shell {
-    gap: 22px;
+    gap: var(--space-5);
   }
 
   .mosque-hero-top {
