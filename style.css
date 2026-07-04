@@ -567,7 +567,7 @@ input:focus-visible {
     box-shadow 150ms ease;
 }
 
-.shrine-dot.hover {
+.shrine-dot-hit:hover .shrine-dot {
   transform: scale(1.24);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }

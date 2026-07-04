@@ -1,9 +1,9 @@
-import { APP_CONFIG } from "./config.js?v=polish-20260704";
+import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
 import {
   buildGoogleDriveThumbnailUrl,
   cleanCellValue,
   normalizeSearchText,
-} from "./utils.js?v=polish-20260704";
+} from "./utils.js?v=safarifix-20260704";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|heic|heif|jpe?g|png|webp|svg)$/i;
 const NAMED_MAIN_PHOTO_RE = /^(.+)_M(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;

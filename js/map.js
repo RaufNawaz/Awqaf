@@ -1,4 +1,4 @@
-import { APP_CONFIG } from "./config.js?v=polish-20260704";
+import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&
@@ -19,11 +19,10 @@ function getLeaflet() {
   return window.L;
 }
 
-function createMarkerIcon({ selected = false, hover = false } = {}) {
+function createMarkerIcon({ selected = false } = {}) {
   const L = getLeaflet();
   const classes = ["shrine-dot"];
   if (selected) classes.push("selected");
-  if (hover) classes.push("hover");
 
   const hitSize = IS_COARSE_POINTER ? 34 : 26;
   const anchor = Math.round(hitSize / 2);
@@ -126,22 +125,19 @@ export function createShrineMap({ onSelect, onMapClick }) {
         bubblingMouseEvents: false,
       });
 
-      marker.bindTooltip(row.title, {
-        direction: "top",
-        offset: [0, -10],
-        opacity: 1,
-        sticky: true,
-      });
-
-      marker.on("mouseover", () => {
-        marker.setIcon(createMarkerIcon({ selected: row.id === selectedId, hover: true }));
-        marker.openTooltip();
-      });
-
-      marker.on("mouseout", () => {
-        marker.setIcon(createMarkerIcon({ selected: row.id === selectedId }));
-        marker.closeTooltip();
-      });
+      // Hover styling is pure CSS (.shrine-dot-hit:hover) and the tooltip is
+      // managed by Leaflet's own bindTooltip hover handling. Never swap the
+      // icon on mouseover: setIcon() replaces the DOM node under the cursor,
+      // and Safari drops the pending click/mouseout on the removed element
+      // (broken taps + tooltips stuck open).
+      if (!IS_COARSE_POINTER) {
+        marker.bindTooltip(row.title, {
+          direction: "top",
+          offset: [0, -10],
+          opacity: 1,
+          sticky: true,
+        });
+      }
 
       marker.on("click", () => {
         onSelect(row.id);

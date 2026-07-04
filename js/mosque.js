@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js?v=polish-20260704";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=polish-20260704";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=polish-20260704";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=polish-20260704";
+import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=safarifix-20260704";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=safarifix-20260704";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=safarifix-20260704";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -38,7 +38,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=polish-20260704";
+const PAGE_VERSION_QUERY = "v=safarifix-20260704";
 
 const pageEl = document.getElementById("mosquePage");
 
