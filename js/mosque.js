@@ -9,7 +9,7 @@ const UI_TEXT = {
   notFound: "Mosque not found.",
   failedTitle: "Unable to load this mosque page",
   failedPrefix: "Failed to load data:",
-  pageEyebrow: "Awqaf Mosque Directory",
+  pageEyebrow: "Auqaf Mosque Directory",
   browseMap: "Browse map",
   getDirections: "Get directions",
   openFullMap: "Open full map",

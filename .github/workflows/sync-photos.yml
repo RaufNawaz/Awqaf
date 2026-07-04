@@ -1,0 +1,40 @@
+name: Sync Drive Photos
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # Nightly at 03:00 UTC.
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-photos
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install sharp
+        run: npm install sharp@^0.33.0
+
+      - name: Sync photos from Google Drive
+        run: node scripts/sync-photos.mjs
+
+      - name: Commit photo changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Sync mosque photos from Google Drive"
+          file_pattern: "photos/**"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"

@@ -6,6 +6,9 @@ This is a static single-page website inspired by the look and feel of the Sufi S
 
 ```text
 .
+|-- .github/
+|   `-- workflows/
+|       `-- sync-photos.yml
 |-- js/
 |   |-- app.js
 |   |-- config.js
@@ -14,6 +17,11 @@ This is a static single-page website inspired by the look and feel of the Sufi S
 |   |-- map.js
 |   |-- mosque.js
 |   `-- utils.js
+|-- photos/
+|   |-- index.json
+|   `-- <mosque-slug>/*.webp
+|-- scripts/
+|   `-- sync-photos.mjs
 |-- index.html
 |-- mosque.html
 |-- sw.js
@@ -41,9 +49,18 @@ Then open the local URL the server prints, usually `http://localhost:3000` or `h
 
 ## How to deploy to GitHub Pages
 
+This repo is already set up: **GitHub Pages publishes the default branch
+`1.1`**, so pushing or merging to `1.1` deploys to production
+(`https://raufnawaz.github.io/Awqaf/`) within a minute or two. Do feature work
+on a branch and merge to `1.1` when ready. The nightly `sync-photos` Action
+also commits to `1.1`, so merge `1.1` into long-lived branches before testing
+photos locally.
+
+For a fresh fork/copy:
+
 1. Push this folder to a GitHub repository.
 2. In GitHub, open `Settings` -> `Pages`.
-3. Set the source to the branch you want to publish from, usually `main`, and the root folder `/`.
+3. Set the source to the branch you want to publish from and the root folder `/`.
 4. Save the setting and wait for GitHub Pages to publish the site.
 
 This project is plain static HTML/CSS/JS, so it does not need a build step.
@@ -80,11 +97,19 @@ Photo file names should use this format:
 
 ```text
 MosqueName_M.jpg
-MosqueName_I_#.jpg
-MosqueName_O_#.jpg
+MosqueName_I.jpg   (or MosqueName_I_#.jpg if uploading more than one)
+MosqueName_O.jpg   (or MosqueName_O_#.jpg if uploading more than one)
 ```
 
 Examples:
+
+```text
+Jamia Masjid Main Bazar Kahchu Pura Lahore_M.jpg
+Jamia Masjid Main Bazar Kahchu Pura Lahore_I.jpg
+Jamia Masjid Main Bazar Kahchu Pura Lahore_O.jpg
+```
+
+or, with more than one inside/outside photo:
 
 ```text
 Jamia Masjid Main Bazar Kahchu Pura Lahore_M.jpg
@@ -93,7 +118,7 @@ Jamia Masjid Main Bazar Kahchu Pura Lahore_I_2.jpg
 Jamia Masjid Main Bazar Kahchu Pura Lahore_O_1.jpg
 ```
 
-`_M` is the main/default preview photo. `_I_1`, `_I_2`, etc. are inside photos. `_O_1`, `_O_2`, etc. are outside photos. The `MosqueName` part should match the mosque name in the data, preferably the `Mosque Name` column.
+`_M` is the main/default preview photo. `_I` (or `_I_1`, `_I_2`, ...) are inside photos. `_O` (or `_O_1`, `_O_2`, ...) are outside photos — the `_#` is only needed when uploading more than one of the same type for a mosque, so the site can tell them apart and order them; without it, multiple same-named files are just auto-ordered by upload time. The `MosqueName` part should match the mosque name in the data, preferably the `Mosque Name` column.
 
 As a fail-safe, the site still accepts the previous numbered format:
 
@@ -225,10 +250,50 @@ The Google Drive API itself is available at no additional cost, but it uses Goog
 
 If both `appsScriptUrl` and `apiKey` are blank, or Drive cannot be listed, the site falls back to any photo URLs already present in the live CSV.
 
+## Local photo sync (faster photos, same Drive workflow)
+
+Hotlinking `drive.google.com/thumbnail` images works, but Drive is not an
+image CDN: rate limits and variable latency make photos feel slow. To fix
+that without changing how staff upload photos, a GitHub Action mirrors Drive
+photos into the repo as pre-sized, same-origin WebP files:
+
+```text
+.github/workflows/sync-photos.yml   Runs the sync (manual trigger + nightly cron)
+scripts/sync-photos.mjs             Diffs Drive against photos/index.json, downloads
+                                     changed images, generates WebP thumbnails
+photos/index.json                   Manifest: source of truth for what has been synced
+photos/<mosque-slug>/*.webp         Generated thumbnails (small ~w400, large ~w1200)
+```
+
+Staff workflow is unchanged: keep uploading photos to the Drive folder using
+the `_M` / `_I_#` / `_O_#` naming convention above. The Action periodically
+diffs the Drive folder against `photos/index.json` (by Drive file id and
+`modifiedTime`) and commits only what changed, so commits stay small.
+
+The site (`js/drive-photos.js`) prefers these local files and only falls back
+to a live Drive thumbnail for a photo the sync hasn't picked up yet. Nothing
+about the matching or rendering code needs to know which source a photo came
+from.
+
+Two constraints this relies on, since the site deploys to GitHub Pages:
+
+- **No Git LFS for served images.** GitHub Pages does not serve LFS objects
+  (they render as broken pointer files), so the committed thumbnails must be
+  plain files in the repo.
+- **Only generated thumbnails are committed, not full-resolution originals.**
+  Google Drive stays the permanent archive. Committing two small WebP sizes
+  per photo instead of originals keeps the repository small and bounds
+  GitHub Pages bandwidth usage.
+
+To run the sync by hand, use the "Sync Drive Photos" workflow's "Run
+workflow" button in the GitHub Actions tab, or run
+`node scripts/sync-photos.mjs` locally with Node 18+ and `sharp` installed
+(`npm install sharp`).
+
 ## Notes
 
 - Marker clicks and result clicks open the in-page detail drawer.
 - Each mosque also has a detail page at `mosque.html?id=...`.
-- `sw.js` caches Drive thumbnail responses for faster repeat visits and shrine switching. It works on `http://localhost` and HTTPS deployments, not when opening files directly from disk.
+- `sw.js` caches Drive thumbnail responses, local `photos/` thumbnails, and the `photos/index.json` manifest for faster repeat visits and shrine switching. It works on `http://localhost` and HTTPS deployments, not when opening files directly from disk.
 - The Google Drive API key is visible in browser source, so restrict it in Google Cloud.
 - Old local images, offline CSV snapshots, and import scripts are kept under ignored `junk/` storage only.

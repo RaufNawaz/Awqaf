@@ -12,7 +12,7 @@ const UI_TEXT = {
   loading: "Loading mosque data...",
   loadingPhotos: "Loading photos...",
   noSelection: "No mosque selected yet. Click a marker to view details.",
-  directoryButton: "Awqaf Directory",
+  directoryButton: "Auqaf Directory",
   searchPlaceholder: "Search mosques...",
   noMatches: "No matches.",
   uncategorized: "Other Districts",
