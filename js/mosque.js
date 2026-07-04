@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260704";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260704";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260704";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260704";
+import { APP_CONFIG } from "./config.js?v=polish-20260704";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=polish-20260704";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=polish-20260704";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=polish-20260704";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -38,7 +38,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=photos-20260704";
+const PAGE_VERSION_QUERY = "v=polish-20260704";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -488,13 +488,17 @@ function renderNearbySection(items) {
   `;
 }
 
-function renderHeroPhoto(photo) {
+function renderHeroPhoto(photo, hasGallery) {
   if (!photo) return "";
   const imageUrl = getPhotoImageUrl(photo, "hero");
   if (!imageUrl) return "";
 
+  const linkAttributes = hasGallery
+    ? `href="#gallery" aria-label="${escapeHtml(UI_TEXT.galleryHeading)}"`
+    : `href="${escapeHtml(photo.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(photo.label)}"`;
+
   return `
-    <a class="mosque-hero-media-wrap" href="#gallery" aria-label="${escapeHtml(UI_TEXT.galleryHeading)}">
+    <a class="mosque-hero-media-wrap" ${linkAttributes}>
       <img
         class="mosque-hero-media-img"
         src="${escapeHtml(imageUrl)}"
@@ -510,7 +514,8 @@ function renderHeroPhoto(photo) {
 function renderPage(rows, row) {
   const narrative = buildNarrative(row);
   const galleryItems = buildPhotoItems(row);
-  const defaultPhoto = galleryItems[0] || null;
+  const heroPhoto = galleryItems[0] || null;
+  const galleryPhotos = galleryItems.slice(1);
   const nearbyMosques = getNearbyMosques(rows, row);
   const alternateName = getOnSiteName(row) || getRegisteredName(row);
   const locationLabel = getLocationLabel(row);
@@ -536,7 +541,7 @@ function renderPage(rows, row) {
       </div>
 
       <section class="mosque-hero">
-        <div class="mosque-hero-top${defaultPhoto ? "" : " mosque-hero-top-no-media"}">
+        <div class="mosque-hero-top${heroPhoto ? "" : " mosque-hero-top-no-media"}">
           <div class="mosque-hero-copy">
             <p class="mosque-eyebrow">${escapeHtml(UI_TEXT.pageEyebrow)}</p>
             <h1 class="mosque-title">${escapeHtml(row.title)}</h1>
@@ -552,7 +557,7 @@ function renderPage(rows, row) {
             }
             <p class="mosque-lede">${escapeHtml(narrative.intro)}</p>
           </div>
-          ${renderHeroPhoto(defaultPhoto)}
+          ${renderHeroPhoto(heroPhoto, galleryPhotos.length > 0)}
         </div>
         <div class="mosque-hero-divider"></div>
         <nav class="mosque-section-nav" aria-label="Mosque page sections">
@@ -634,7 +639,7 @@ function renderPage(rows, row) {
           </section>
 
           ${renderNearbySection(nearbyMosques)}
-          ${renderGallerySection(galleryItems)}
+          ${renderGallerySection(galleryPhotos)}
         </div>
 
         <aside class="mosque-aside">
