@@ -1,7 +1,7 @@
-import { APP_CONFIG } from "./config.js?v=photos-20260625";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260625";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260625";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260625";
+import { APP_CONFIG } from "./config.js?v=photos-20260704";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photos-20260704";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photos-20260704";
+import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=photos-20260704";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -10,7 +10,6 @@ const UI_TEXT = {
   failedTitle: "Unable to load this mosque page",
   failedPrefix: "Failed to load data:",
   pageEyebrow: "Awqaf Mosque Directory",
-  backToDirectory: "Back to directory",
   browseMap: "Browse map",
   getDirections: "Get directions",
   openFullMap: "Open full map",
@@ -39,7 +38,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=photos-20260625";
+const PAGE_VERSION_QUERY = "v=photos-20260704";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -474,7 +473,7 @@ function renderNearbySection(items) {
           .map(({ row, distanceKm }) => {
             const meta = [getLocationLabel(row), formatDistanceLabel(distanceKm)]
               .filter(Boolean)
-              .join(" - ");
+              .join(" · ");
 
             return `
               <a class="mosque-nearby-card" href="${escapeHtml(getMosquePageUrl(row))}">
@@ -533,10 +532,7 @@ function renderPage(rows, row) {
       <div class="mosque-toolbar">
         <a class="mosque-toolbar-link" href="${escapeHtml(
           getMapPageUrl(row),
-        )}">${escapeHtml(UI_TEXT.backToDirectory)}</a>
-        <a class="mosque-toolbar-link mosque-toolbar-link-muted" href="./index.html?${PAGE_VERSION_QUERY}">${escapeHtml(
-          UI_TEXT.browseMap,
-        )}</a>
+        )}">${escapeHtml(UI_TEXT.browseMap)}</a>
       </div>
 
       <section class="mosque-hero">
@@ -664,7 +660,7 @@ function renderMessage(title, message) {
     <div class="mosque-shell">
       <div class="mosque-toolbar">
         <a class="mosque-toolbar-link" href="./index.html?${PAGE_VERSION_QUERY}">${escapeHtml(
-          UI_TEXT.backToDirectory,
+          UI_TEXT.browseMap,
         )}</a>
       </div>
       <section class="mosque-hero">
