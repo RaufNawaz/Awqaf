@@ -1,5 +1,9 @@
 export const APP_CONFIG = {
   title: "Auqaf Directory",
+  // Official Auqaf mosque count, used in the directory status line instead of
+  // the live row count (the published sheet doesn't yet have valid
+  // coordinates for every registered mosque).
+  officialMosqueCount: 437,
   dataSource: {
     // This stays blank because the app is using the sheet's published CSV URL below.
     spreadsheetId: "",

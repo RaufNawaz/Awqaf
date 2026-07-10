@@ -1,4 +1,4 @@
-import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
+import { APP_CONFIG } from "./config.js?v=drivephoto-merge-20260710";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&

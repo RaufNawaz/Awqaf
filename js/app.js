@@ -1,12 +1,18 @@
-import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
+import { APP_CONFIG } from "./config.js?v=drivephoto-merge-20260710";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=safarifix-20260704";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=safarifix-20260704";
-import { createShrineMap } from "./map.js?v=safarifix-20260704";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=safarifix-20260704";
+} from "./data.js?v=drivephoto-merge-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=drivephoto-merge-20260710";
+import { createShrineMap } from "./map.js?v=drivephoto-merge-20260710";
+import {
+  escapeHtml,
+  formatTitleCaseName,
+  joinBits,
+  normalizeSearchText,
+  wait,
+} from "./utils.js?v=drivephoto-merge-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -19,7 +25,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=safarifix-20260704";
+const PAGE_VERSION_QUERY = "v=drivephoto-merge-20260710";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -130,7 +136,7 @@ function getDistrictCount(rows) {
 }
 
 function getDirectoryStatus(rows = state.rows) {
-  return `${rows.length} mosques across ${getDistrictCount(rows)} districts.`;
+  return `${APP_CONFIG.officialMosqueCount} mosques across ${getDistrictCount(rows)} districts.`;
 }
 
 function getRequestedRowId() {
@@ -159,22 +165,6 @@ function getMosquePageUrl(row) {
 
 function getMosqueGalleryUrl(row) {
   return `${getMosquePageUrl(row)}#gallery`;
-}
-
-function getAlternateName(row) {
-  if (
-    row.mosqueNameOnGround &&
-    row.mosqueNameOnGround !== row.title &&
-    row.mosqueNameOnGround !== row.mosqueName
-  ) {
-    return row.mosqueNameOnGround;
-  }
-
-  if (row.mosqueName && row.mosqueName !== row.title) {
-    return row.mosqueName;
-  }
-
-  return "";
 }
 
 function getPreviewPhoto(row) {
@@ -346,7 +336,7 @@ function attachPreviewPhotoFallbacks(row, grid) {
 }
 
 function appendPhotosRow(container, rowData) {
-  const photos = getDisplayablePhotoItems(rowData);
+  const photos = getDisplayablePhotoItems(rowData).filter(({ photo }) => photo.type !== "main");
 
   if (!photos.length) return;
 
@@ -405,23 +395,9 @@ function renderDetails(row) {
   title.appendChild(titleLink);
   elements.details.appendChild(title);
 
-  const subtitleText = joinBits([row.city, getAlternateName(row)].filter(Boolean));
-
-  if (subtitleText) {
-    const subtitle = document.createElement("p");
-    subtitle.className = "muted";
-    subtitle.textContent = subtitleText;
-    elements.details.appendChild(subtitle);
-  }
-
   appendTextRow(elements.details, "District", getDistrictLabel(row));
   appendTextRow(elements.details, "City", row.city);
-  appendTextRow(
-    elements.details,
-    "Mosque Name",
-    row.mosqueName && row.mosqueName !== row.title ? row.mosqueName : "",
-  );
-  appendTextRow(elements.details, "Imam", row.imamName);
+  appendTextRow(elements.details, "Imam", formatTitleCaseName(row.imamName));
   appendTextRow(elements.details, "Built", row.mosqueBuiltDate);
   appendTextRow(elements.details, "Women's Prayer Section", row.womensPrayerSection);
   appendTextRow(

@@ -1,9 +1,9 @@
-import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
+import { APP_CONFIG } from "./config.js?v=drivephoto-merge-20260710";
 import {
   buildGoogleDriveThumbnailUrl,
   cleanCellValue,
   normalizeSearchText,
-} from "./utils.js?v=safarifix-20260704";
+} from "./utils.js?v=drivephoto-merge-20260710";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|heic|heif|jpe?g|png|webp|svg)$/i;
 const NAMED_MAIN_PHOTO_RE = /^(.+)_M(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;
@@ -607,11 +607,20 @@ export async function loadDrivePhotoIndex() {
       loadRemoteDrivePhotoIndex(),
     ]);
 
-    // Repo-served (local) photos win when a mosque has been synced; the live
-    // Drive listing fills in anything the sync hasn't picked up yet.
-    const mergedIndex = new Map(remoteIndex);
-    localIndex.forEach((photos, key) => {
-      mergedIndex.set(key, photos);
+    // Repo-served (local) photos win per photo (matched by Drive file id);
+    // the live Drive listing fills in any photo the sync hasn't picked up
+    // yet, even for a mosque that already has other photos synced locally.
+    const mergedIndex = new Map();
+    const allKeys = new Set([...remoteIndex.keys(), ...localIndex.keys()]);
+
+    allKeys.forEach((key) => {
+      const localPhotos = localIndex.get(key) || [];
+      const remotePhotos = remoteIndex.get(key) || [];
+      const localIds = new Set(localPhotos.map((photo) => photo.id));
+      const remoteOnly = remotePhotos.filter((photo) => !localIds.has(photo.id));
+      const combined = [...localPhotos, ...remoteOnly];
+      combined.sort(comparePhotoEntries);
+      mergedIndex.set(key, combined);
     });
 
     drivePhotoIndex = mergedIndex;

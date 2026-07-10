@@ -1,7 +1,13 @@
-import { APP_CONFIG } from "./config.js?v=safarifix-20260704";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=safarifix-20260704";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=safarifix-20260704";
-import { escapeHtml, joinBits, normalizeSearchText, wait } from "./utils.js?v=safarifix-20260704";
+import { APP_CONFIG } from "./config.js?v=drivephoto-merge-20260710";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=drivephoto-merge-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=drivephoto-merge-20260710";
+import {
+  escapeHtml,
+  formatTitleCaseName,
+  joinBits,
+  normalizeSearchText,
+  wait,
+} from "./utils.js?v=drivephoto-merge-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -38,7 +44,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=safarifix-20260704";
+const PAGE_VERSION_QUERY = "v=drivephoto-merge-20260710";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -182,20 +188,14 @@ function splitSentences(text) {
 }
 
 function buildGeneratedNarrative(row) {
-  const locationLabel = getLocationLabel(row);
-  const introParts = [];
   const bodyParts = [];
-
-  if (locationLabel) {
-    introParts.push(`This mosque is listed in ${locationLabel}.`);
-  }
 
   if (row.mosqueBuiltDate) {
     bodyParts.push(`The recorded built year is ${row.mosqueBuiltDate}.`);
   }
 
   if (row.imamName) {
-    bodyParts.push(`The listed imam is ${row.imamName}.`);
+    bodyParts.push(`The listed imam is ${formatTitleCaseName(row.imamName)}.`);
   }
 
   if (row.womensPrayerSection) {
@@ -207,7 +207,7 @@ function buildGeneratedNarrative(row) {
   }
 
   return {
-    intro: introParts.join(" ").trim() || UI_TEXT.fallbackIntro,
+    intro: UI_TEXT.fallbackIntro,
     body: bodyParts.length ? [bodyParts.join(" ")] : [UI_TEXT.fallbackBody],
   };
 }
@@ -517,7 +517,6 @@ function renderPage(rows, row) {
   const heroPhoto = galleryItems[0] || null;
   const galleryPhotos = galleryItems.slice(1);
   const nearbyMosques = getNearbyMosques(rows, row);
-  const alternateName = getOnSiteName(row) || getRegisteredName(row);
   const locationLabel = getLocationLabel(row);
   const addressLabel = getAddressLabel(row);
   const directionsUrl = buildDirectionsUrl(row.latitude, row.longitude);
@@ -527,7 +526,7 @@ function renderPage(rows, row) {
     { label: UI_TEXT.onSiteName, value: getOnSiteName(row) },
     { label: UI_TEXT.district, value: getDistrictLabel(row) },
     { label: UI_TEXT.city, value: getCityLabel(row) },
-    { label: UI_TEXT.imam, value: row.imamName },
+    { label: UI_TEXT.imam, value: formatTitleCaseName(row.imamName) },
     { label: UI_TEXT.built, value: row.mosqueBuiltDate },
     { label: UI_TEXT.womensPrayer, value: row.womensPrayerSection },
     { label: UI_TEXT.associatedShrine, value: getAssociatedShrine(row) },
@@ -545,11 +544,6 @@ function renderPage(rows, row) {
           <div class="mosque-hero-copy">
             <p class="mosque-eyebrow">${escapeHtml(UI_TEXT.pageEyebrow)}</p>
             <h1 class="mosque-title">${escapeHtml(row.title)}</h1>
-            ${
-              alternateName
-                ? `<p class="mosque-alt-name">${escapeHtml(alternateName)}</p>`
-                : ""
-            }
             ${
               locationLabel
                 ? `<p class="mosque-location-line">${escapeHtml(locationLabel)}</p>`

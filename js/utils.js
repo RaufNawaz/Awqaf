@@ -70,6 +70,12 @@ export function parseRuralUrbanLabel(value) {
   return "";
 }
 
+export function formatTitleCaseName(value) {
+  const trimmed = cleanCellValue(value);
+  if (!trimmed) return "";
+  return trimmed.replace(/\p{L}+/gu, (word) => word.charAt(0).toUpperCase() + word.slice(1));
+}
+
 export function parseWomenPrayerLabel(value) {
   const trimmed = cleanCellValue(value);
   if (!trimmed) return "";
