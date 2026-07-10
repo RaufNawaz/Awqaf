@@ -1,18 +1,18 @@
-import { APP_CONFIG } from "./config.js?v=drivephoto-merge-20260710";
+import { APP_CONFIG } from "./config.js?v=mosque-page-refresh-20260710";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=drivephoto-merge-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=drivephoto-merge-20260710";
-import { createShrineMap } from "./map.js?v=drivephoto-merge-20260710";
+} from "./data.js?v=mosque-page-refresh-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=mosque-page-refresh-20260710";
+import { createShrineMap } from "./map.js?v=mosque-page-refresh-20260710";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=drivephoto-merge-20260710";
+} from "./utils.js?v=mosque-page-refresh-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -25,7 +25,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=drivephoto-merge-20260710";
+const PAGE_VERSION_QUERY = "v=mosque-page-refresh-20260710";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),

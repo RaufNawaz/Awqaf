@@ -1,6 +1,6 @@
 # Awqaf Website Handoff
 
-Last updated: 2026-07-02
+Last updated: 2026-07-10
 
 ## 1. Project Overview
 
@@ -80,10 +80,15 @@ Deployment checklist:
 2. Make sure `index.html`, `mosque.html`, `style.css`, `sw.js`, `favicon.svg`,
    `js/`, and `photos/` are published.
 3. Serve over HTTPS in production so the service worker can run.
-4. After JavaScript changes, bump the `?v=` query string (current pattern:
-   `design-YYYYMMDD`; see CLAUDE.md "Cache busting") in HTML and module
-   imports so browsers do not keep stale JS. CSS/HTML-only changes do not
-   need a bump (`style.css` is linked without a version query).
+4. After JavaScript **or** `style.css` changes, bump the shared `?v=` query
+   string (current pattern: `<change-name>-YYYYMMDD`) everywhere it appears —
+   both `<script>` tags, both `<link rel="stylesheet">` tags, every
+   `import ... from "./x.js?v=..."` line, and every `PAGE_VERSION_QUERY`
+   constant in `js/*.js`. They must all match, or navigation links built with
+   `PAGE_VERSION_QUERY` (e.g. `getMosquePageUrl()`) will point at a stale
+   value. `style.css` used to be linked without a version query and skip this
+   step; as of the 2026-07-10 mosque detail-page redesign it carries the same
+   `?v=` as the JS files, so a CSS-only change now needs the same bump too.
 
 There is no build artifact to generate.
 
@@ -335,7 +340,8 @@ If changing providers, update tile URLs, attributions, and any required API keys
 Cache layers:
 
 - Browser HTTP cache for normal static assets.
-- Version query strings on JS modules, currently `design-20260702`.
+- A shared version query string on JS modules and, as of 2026-07-10,
+  `style.css` too — currently `mosque-page-refresh-20260710`.
 - Apps Script cache, described in `README.md`.
 - Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
 - In-memory Drive photo index for the current page session.
@@ -351,9 +357,10 @@ When photos are added to Drive:
 - Hard refresh or clear site data if testing immediately.
 - Make sure file names match the naming convention.
 
-When JavaScript changes:
+When JavaScript or `style.css` changes:
 
-- Bump the version query string in `index.html`, `mosque.html`, and module imports.
+- Bump the shared version query string in `index.html`, `mosque.html`,
+  module imports, and both `style.css` `<link>` tags.
 
 When service worker logic changes:
 
@@ -473,7 +480,7 @@ Before handing changes to production:
 7. Confirm text appears before photos if Drive metadata is cold.
 8. Confirm gallery photos appear after hydration.
 9. Check browser console for errors.
-10. Bump module query strings if JavaScript changed.
+10. Bump the shared `?v=` query string if JavaScript or `style.css` changed.
 
 ## 17. Ownership Notes
 
@@ -616,6 +623,60 @@ archaeology. After any JS revert, bump the `?v=` version string per CLAUDE.md.
   absolute URL of the deployed site
   (`https://raufnawaz.github.io/Awqaf/...`); add it with a representative
   image if link previews should carry a picture.
+
+### Mosque detail-page redesign (2026-07-10)
+
+- **What**: `mosque.html` moved from the map page's rounded/pill visual
+  language to its own scoped look — a serif display face
+  (`--font-display: "Source Serif 4"`, loaded alongside Inter/Roboto Mono in
+  `mosque.html`'s Google Fonts `<link>`), a muted brass accent
+  (`--mosque-brass` / `--mosque-brass-strong` / `--mosque-brass-soft`) layered
+  on top of the existing emerald accent, an 8-point-star mark (two overlapping
+  squares via `::before`/`::after`) on `.mosque-eyebrow` and
+  `.mosque-sidebar-brand`, underline-style section tabs
+  (`.mosque-section-tab` / `.mosque-section-tab-active`) replacing the old
+  pill buttons, a brass top border on `.mosque-sidebar-card`, and a padded
+  white "frame" around the hero photo (`.mosque-hero-media-wrap` padding +
+  white background). Corner radius on cards/buttons/tabs tightened from 8px to
+  4–6px; hover states lost their `translateY` lift in favor of a calmer
+  box-shadow-only change.
+- **Scoped, not global**: all of this lives inside the `.mosque-body` selector
+  in `style.css` (variables redeclared there override the `:root` values only
+  for descendants of `mosque.html`'s `<body>`), so `index.html`'s Manrope
+  headings and pill buttons are untouched. Do not hoist `--font-display` or
+  the brass tokens into `:root` without deliberately deciding to restyle the
+  map page too.
+- **Hero layout**: the hero photo column widened from
+  `minmax(360px, 460px)` to `minmax(420px, 560px)` (and the 1024px breakpoint
+  from `minmax(300px, 380px)` to `minmax(320px, 420px)`), and
+  `.mosque-hero-top` switched from `align-items: center` to `align-items:
+  start` — with a much taller photo than the text block, center-alignment
+  left a large dead gap above the tab row; top-alignment closes it.
+- **Lede sentence removed from the hero**: the boilerplate line under the
+  title/district ("This page brings together the core public information
+  available for this mosque.") is gone. `UI_TEXT.fallbackIntro` was deleted
+  and `buildGeneratedNarrative()` in `js/mosque.js` now returns `intro: ""`.
+  The "About this mosque" section renders
+  `formatParagraphs([narrative.intro, ...narrative.body])` instead of just
+  `narrative.body`, so on the rare path where `narrative.intro` holds real
+  sheet content (multi-paragraph or long single-paragraph `Comments`, see
+  `buildNarrative()`), that text still shows — just in the About section
+  instead of the hero. The current published sheet has no `Comments` column at
+  all, so in practice every mosque hits the generated-narrative path and
+  `narrative.intro` is always empty.
+- **Mobile tab row**: `.mosque-section-nav` on the sub-720px breakpoint is now
+  `flex-wrap: nowrap` with `overflow-x: auto` (a horizontally scrollable tab
+  strip) instead of stacking each tab full-width, since underline tabs don't
+  read well stacked the way pill buttons did.
+- **To revert**: everything is in `style.css` under the `.mosque-body` block
+  through the two responsive media queries at the bottom of the file, plus
+  the small `js/mosque.js` changes described above (`fallbackIntro` removal,
+  the hero `<p class="mosque-lede">` removal, and the About-section
+  `formatParagraphs` call). Restore `Manrope` in the `mosque.html` font
+  `<link>` if reverting the serif change (Inter and Roboto Mono weights were
+  also trimmed in that `<link>` — 800 dropped from Inter, 700-only kept on
+  Roboto Mono — restore the wider weight list if something outside
+  `.mosque-body` needs them).
 
 ### Known data quirks (source sheet, not code)
 

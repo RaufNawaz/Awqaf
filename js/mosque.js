@@ -1,13 +1,13 @@
-import { APP_CONFIG } from "./config.js?v=drivephoto-merge-20260710";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=drivephoto-merge-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=drivephoto-merge-20260710";
+import { APP_CONFIG } from "./config.js?v=mosque-page-refresh-20260710";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=mosque-page-refresh-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=mosque-page-refresh-20260710";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=drivephoto-merge-20260710";
+} from "./utils.js?v=mosque-page-refresh-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -29,8 +29,6 @@ const UI_TEXT = {
   galleryHeading: "Photo gallery",
   nearbyHeading: "Nearby mosques",
   distanceAway: "away",
-  fallbackIntro:
-    "This page brings together the core public information available for this mosque.",
   fallbackBody:
     "Public information, mapped location details, and available photographs are listed here for general visitors.",
   address: "Address",
@@ -44,7 +42,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=drivephoto-merge-20260710";
+const PAGE_VERSION_QUERY = "v=mosque-page-refresh-20260710";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -207,7 +205,7 @@ function buildGeneratedNarrative(row) {
   }
 
   return {
-    intro: UI_TEXT.fallbackIntro,
+    intro: "",
     body: bodyParts.length ? [bodyParts.join(" ")] : [UI_TEXT.fallbackBody],
   };
 }
@@ -549,7 +547,6 @@ function renderPage(rows, row) {
                 ? `<p class="mosque-location-line">${escapeHtml(locationLabel)}</p>`
                 : ""
             }
-            <p class="mosque-lede">${escapeHtml(narrative.intro)}</p>
           </div>
           ${renderHeroPhoto(heroPhoto, galleryPhotos.length > 0)}
         </div>
@@ -577,7 +574,7 @@ function renderPage(rows, row) {
               <h2>${escapeHtml(UI_TEXT.aboutHeading)}</h2>
             </div>
             <div class="mosque-richtext">
-              ${formatParagraphs(narrative.body)}
+              ${formatParagraphs([narrative.intro, ...narrative.body])}
             </div>
           </section>
 
