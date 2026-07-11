@@ -282,7 +282,9 @@ Startup flow:
    plain layer group (see §18 "Marker clustering" for tuning/removal).
 3. Load CSV rows with `loadShrineRows({ includeDrivePhotos: false })`.
 4. Render markers and searchable district list.
-5. Show status like `N mosques across M districts`.
+5. Clear the `#status` line (it only shows loading/error text now — see
+   §18 "Mosque detail-page follow-up fixes" for why the old mosque-count
+   line was removed).
 6. Schedule background Drive photo warmup.
 7. If the URL has `?id=...`, select that row.
 
@@ -500,7 +502,8 @@ If a future maintainer needs to make the photo system even faster, the next larg
 Every item below shipped in July 2026 (branches `1.2`, `1.2.0`,
 `design-polish`, all merged into `1.1`). Each entry says where the feature
 lives and the minimal revert path, so any of them can be pulled out without
-archaeology. After any JS revert, bump the `?v=` version string per CLAUDE.md.
+archaeology. After any JS or `style.css` revert, bump the shared `?v=`
+version string (see §4/§14 above).
 
 ### Marker clustering (map page)
 
