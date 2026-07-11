@@ -341,7 +341,7 @@ Cache layers:
 
 - Browser HTTP cache for normal static assets.
 - A shared version query string on JS modules and, as of 2026-07-10,
-  `style.css` too — currently `hero-photo-decouple-20260710`.
+  `style.css` too — currently `hero-photo-cap-20260710`.
 - Apps Script cache, described in `README.md`.
 - Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
 - In-memory Drive photo index for the current page session.
@@ -681,31 +681,53 @@ archaeology. After any JS revert, bump the `?v=` version string per CLAUDE.md.
 ### Mosque detail-page follow-up fixes (2026-07-10, same day as the redesign above)
 
 - **Dead space between the title block and the tab row when a hero photo is
-  present** (two attempts — the second is what shipped): the redesign above
+  present** (three attempts — the third is what shipped): the redesign above
   widened the hero photo column, and its `aspect-ratio: 4/3` box scaled up
   with it (~420px tall at the 560px column width), while the shorter
   post-redesign text block (no more lede paragraph) is often only ~150-230px
   tall. Since `.mosque-hero-top` is a CSS grid with text and photo sharing one
   row, the row is always as tall as its tallest item, so it stretched to the
   photo's height and the top-aligned text left a visible empty gap above the
-  tab nav. The first fix capped the photo at a fixed `height: 230px` instead
-  of a scaling `aspect-ratio`, trading a big photo for no gap — the follow-up
-  request wanted both. **What shipped instead**: `.mosque-hero-divider` and
-  `<nav class="mosque-section-nav">` moved from being siblings of
-  `.mosque-hero-top` to living inside `.mosque-hero-copy`, after the location
-  line (`renderPage()` in `js/mosque.js`). The tab nav is now part of the text
-  column's own normal-flow content, so it sits directly under the title no
-  matter how tall the photo column gets — `.mosque-hero-media-wrap` went back
-  to a full `aspect-ratio: 4/3`. When the photo is taller than the text+tabs
-  (the common case, and the whole point), the leftover row height shows up
-  as extra room below the tab row before "About this mosque" starts — with
-  the photo still visibly filling that same vertical span on the right, this
-  reads as a generous hero photo, not a layout bug, even for very short
-  1-line titles (checked). Side effect worth knowing: the tab nav's available
-  width is now the text column's width (~55-65% of the page, not the full
-  hero width), so `.mosque-section-nav`/`.mosque-section-tab` are sized
-  compactly enough that four tabs fit on one line down to the 1024px
-  breakpoint — if a fifth tab is ever added, recheck it still fits without
+  tab nav.
+  1. First fix: capped the photo at a fixed `height: 230px` instead of a
+     scaling `aspect-ratio` — traded a big photo for no gap; rejected, the
+     follow-up request wanted both.
+  2. Second attempt: moved `.mosque-hero-divider` and
+     `<nav class="mosque-section-nav">` from being siblings of
+     `.mosque-hero-top` into `.mosque-hero-copy`, after the location line
+     (`renderPage()` in `js/mosque.js`), so the tab nav is part of the text
+     column's own normal-flow content and sits directly under the title no
+     matter how tall the photo gets. Went back to a full `aspect-ratio: 4/3`
+     photo on the theory that any leftover row height below the (now
+     always-tight) tab row would just read as a generous hero photo. Held up
+     on the two mosques tested at the time (one 3-line title, one 1-line
+     title) but broke on a mosque with a merely average-length title and a
+     tall photo — the gap between the tab row and "About this mosque" was
+     back, just moved one section lower and just as visible.
+  3. **What shipped**: kept the divider/nav-inside-`.mosque-hero-copy` change
+     from #2 (still correct — tabs should never wait on the photo), but also
+     gave `.mosque-hero-media-wrap` a `height: 280px` cap again (up from
+     230px), rather than `aspect-ratio: 4/3`. 280px comfortably covers a
+     typical 2–3 line title + tabs (that combined text-column height is
+     usually ~250-300px), so the cap rarely engages for those and the photo
+     reads as full-size; it only visibly kicks in for unusually short
+     (1-line) titles, where it trades a small, easy-to-miss ~50-80px gap for
+     not stretching the photo to 400px+. The sub-720px stacked mobile layout
+     doesn't share a row with the text at all, so it keeps the proportional
+     `aspect-ratio: 4/3; height: auto;` override — no coupling problem there
+     regardless of title length. If this needs retuning, change the 280px
+     number directly; there's no clean way to make it exactly zero-gap in
+     every case without either capping the photo harder or literally
+     absolute-positioning it over the content below (rejected — the hero
+     photo's column is wider than the sidebar's aside column, so an
+     absolutely-positioned photo tall enough to bleed past the tab row would
+     overlap the "About this mosque" paragraph text in the main column, not
+     just the sidebar).
+  Side effect worth knowing: the tab nav's available width is now the text
+  column's width (~55-65% of the page, not the full hero width), so
+  `.mosque-section-nav`/`.mosque-section-tab` are sized compactly enough that
+  four tabs fit on one line down to the 1024px breakpoint — if a fifth tab is
+  ever added, recheck it still fits without
   wrapping at ~580-650px column width before assuming this still holds.
 - **A hard horizontal seam partway down the page**, below which the gradient
   background gave way to plain white: `html, body { height: 100%; }` (an

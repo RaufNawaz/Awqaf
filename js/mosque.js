@@ -1,13 +1,13 @@
-import { APP_CONFIG } from "./config.js?v=hero-photo-decouple-20260710";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=hero-photo-decouple-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-photo-decouple-20260710";
+import { APP_CONFIG } from "./config.js?v=hero-photo-cap-20260710";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=hero-photo-cap-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-photo-cap-20260710";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=hero-photo-decouple-20260710";
+} from "./utils.js?v=hero-photo-cap-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -42,7 +42,7 @@ const UI_TEXT = {
   associatedShrine: "Associated shrine",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=hero-photo-decouple-20260710";
+const PAGE_VERSION_QUERY = "v=hero-photo-cap-20260710";
 
 const pageEl = document.getElementById("mosquePage");
 

@@ -1,9 +1,9 @@
-import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=hero-photo-decouple-20260710";
+import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=hero-photo-cap-20260710";
 import {
   findDrivePhotosForRow,
   loadDrivePhotosForRow as fetchDrivePhotosForRow,
   loadDrivePhotoIndex,
-} from "./drive-photos.js?v=hero-photo-decouple-20260710";
+} from "./drive-photos.js?v=hero-photo-cap-20260710";
 import {
   cleanCellValue,
   cleanYearLikeValue,
@@ -19,7 +19,7 @@ import {
   parseRuralUrbanLabel,
   parseWomenPrayerLabel,
   pickFirstValue,
-} from "./utils.js?v=hero-photo-decouple-20260710";
+} from "./utils.js?v=hero-photo-cap-20260710";
 
 const DEFAULT_PHOTO_THUMBNAIL_SIZES = {
   sidebar: "w360",
