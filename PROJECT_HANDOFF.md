@@ -341,7 +341,7 @@ Cache layers:
 
 - Browser HTTP cache for normal static assets.
 - A shared version query string on JS modules and, as of 2026-07-10,
-  `style.css` too — currently `hero-gap-fix-20260710`.
+  `style.css` too — currently `hero-photo-decouple-20260710`.
 - Apps Script cache, described in `README.md`.
 - Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
 - In-memory Drive photo index for the current page session.
@@ -681,24 +681,32 @@ archaeology. After any JS revert, bump the `?v=` version string per CLAUDE.md.
 ### Mosque detail-page follow-up fixes (2026-07-10, same day as the redesign above)
 
 - **Dead space between the title block and the tab row when a hero photo is
-  present**: the redesign above widened the hero photo column and its
-  `aspect-ratio: 4/3` box scaled up with it (~420px tall at the 560px column
-  width), while the shorter post-redesign text block (no more lede paragraph)
-  is often only ~150-230px tall. Since `.mosque-hero-top` is a CSS grid with
-  both the text and photo in the same row, the row is always as tall as its
-  tallest item — so the row stretched to the photo's height and the
-  top-aligned text left a visible empty gap above the tab nav. Fixed by
-  giving `.mosque-hero-media-wrap` a fixed `height: 230px` (roughly matching
-  a typical 2-line title block) instead of an `aspect-ratio` that scales with
-  column width, so the row height tracks the text in the common case instead
-  of the photo. The photo is now a wide banner crop rather than a 4:3 box on
-  desktop/tablet. The sub-720px stacked mobile layout doesn't have this
-  row-sharing problem (text and photo are no longer side by side), so it
-  overrides back to `height: auto; aspect-ratio: 4 / 3;` for a normally
-  proportioned full-width mobile photo. If retuning, remember the fixed
-  height only needs to roughly match text height, not be exact — any
-  mismatch just becomes a small, unremarkable gap instead of the ~190px void
-  this replaced.
+  present** (two attempts — the second is what shipped): the redesign above
+  widened the hero photo column, and its `aspect-ratio: 4/3` box scaled up
+  with it (~420px tall at the 560px column width), while the shorter
+  post-redesign text block (no more lede paragraph) is often only ~150-230px
+  tall. Since `.mosque-hero-top` is a CSS grid with text and photo sharing one
+  row, the row is always as tall as its tallest item, so it stretched to the
+  photo's height and the top-aligned text left a visible empty gap above the
+  tab nav. The first fix capped the photo at a fixed `height: 230px` instead
+  of a scaling `aspect-ratio`, trading a big photo for no gap — the follow-up
+  request wanted both. **What shipped instead**: `.mosque-hero-divider` and
+  `<nav class="mosque-section-nav">` moved from being siblings of
+  `.mosque-hero-top` to living inside `.mosque-hero-copy`, after the location
+  line (`renderPage()` in `js/mosque.js`). The tab nav is now part of the text
+  column's own normal-flow content, so it sits directly under the title no
+  matter how tall the photo column gets — `.mosque-hero-media-wrap` went back
+  to a full `aspect-ratio: 4/3`. When the photo is taller than the text+tabs
+  (the common case, and the whole point), the leftover row height shows up
+  as extra room below the tab row before "About this mosque" starts — with
+  the photo still visibly filling that same vertical span on the right, this
+  reads as a generous hero photo, not a layout bug, even for very short
+  1-line titles (checked). Side effect worth knowing: the tab nav's available
+  width is now the text column's width (~55-65% of the page, not the full
+  hero width), so `.mosque-section-nav`/`.mosque-section-tab` are sized
+  compactly enough that four tabs fit on one line down to the 1024px
+  breakpoint — if a fifth tab is ever added, recheck it still fits without
+  wrapping at ~580-650px column width before assuming this still holds.
 - **A hard horizontal seam partway down the page**, below which the gradient
   background gave way to plain white: `html, body { height: 100%; }` (an
   older, unscoped rule that index.html's fixed-viewport map shell depends on)

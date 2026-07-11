@@ -1,18 +1,18 @@
-import { APP_CONFIG } from "./config.js?v=hero-gap-fix-20260710";
+import { APP_CONFIG } from "./config.js?v=hero-photo-decouple-20260710";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=hero-gap-fix-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-gap-fix-20260710";
-import { createShrineMap } from "./map.js?v=hero-gap-fix-20260710";
+} from "./data.js?v=hero-photo-decouple-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-photo-decouple-20260710";
+import { createShrineMap } from "./map.js?v=hero-photo-decouple-20260710";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=hero-gap-fix-20260710";
+} from "./utils.js?v=hero-photo-decouple-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -25,7 +25,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=hero-gap-fix-20260710";
+const PAGE_VERSION_QUERY = "v=hero-photo-decouple-20260710";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
