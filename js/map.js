@@ -1,4 +1,4 @@
-import { APP_CONFIG } from "./config.js?v=mosque-page-refresh-20260710";
+import { APP_CONFIG } from "./config.js?v=hero-gap-fix-20260710";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&

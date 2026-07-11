@@ -752,6 +752,7 @@ input:focus-visible {
   --mosque-shadow-md: 0 16px 32px rgba(15, 23, 42, 0.08);
   --mosque-shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.06);
   --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  height: auto;
   min-height: 100%;
   background: linear-gradient(180deg, #fbfcfb 0%, #f5f7f6 52%, var(--mosque-bg) 100%);
   color: var(--mosque-text);
@@ -841,7 +842,7 @@ input:focus-visible {
 .mosque-hero-media-wrap {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  height: 230px;
   padding: 7px;
   border: 1px solid var(--mosque-border-soft);
   border-radius: 6px;
@@ -1529,6 +1530,8 @@ input:focus-visible {
 
   .mosque-hero-media-wrap {
     max-width: 600px;
+    height: auto;
+    aspect-ratio: 4 / 3;
     margin: 0 auto;
   }
 

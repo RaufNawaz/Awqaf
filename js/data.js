@@ -1,9 +1,9 @@
-import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=mosque-page-refresh-20260710";
+import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=hero-gap-fix-20260710";
 import {
   findDrivePhotosForRow,
   loadDrivePhotosForRow as fetchDrivePhotosForRow,
   loadDrivePhotoIndex,
-} from "./drive-photos.js?v=mosque-page-refresh-20260710";
+} from "./drive-photos.js?v=hero-gap-fix-20260710";
 import {
   cleanCellValue,
   cleanYearLikeValue,
@@ -19,7 +19,7 @@ import {
   parseRuralUrbanLabel,
   parseWomenPrayerLabel,
   pickFirstValue,
-} from "./utils.js?v=mosque-page-refresh-20260710";
+} from "./utils.js?v=hero-gap-fix-20260710";
 
 const DEFAULT_PHOTO_THUMBNAIL_SIZES = {
   sidebar: "w360",

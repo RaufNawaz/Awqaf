@@ -341,7 +341,7 @@ Cache layers:
 
 - Browser HTTP cache for normal static assets.
 - A shared version query string on JS modules and, as of 2026-07-10,
-  `style.css` too — currently `mosque-page-refresh-20260710`.
+  `style.css` too — currently `hero-gap-fix-20260710`.
 - Apps Script cache, described in `README.md`.
 - Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
 - In-memory Drive photo index for the current page session.
@@ -677,6 +677,55 @@ archaeology. After any JS revert, bump the `?v=` version string per CLAUDE.md.
   also trimmed in that `<link>` — 800 dropped from Inter, 700-only kept on
   Roboto Mono — restore the wider weight list if something outside
   `.mosque-body` needs them).
+
+### Mosque detail-page follow-up fixes (2026-07-10, same day as the redesign above)
+
+- **Dead space between the title block and the tab row when a hero photo is
+  present**: the redesign above widened the hero photo column and its
+  `aspect-ratio: 4/3` box scaled up with it (~420px tall at the 560px column
+  width), while the shorter post-redesign text block (no more lede paragraph)
+  is often only ~150-230px tall. Since `.mosque-hero-top` is a CSS grid with
+  both the text and photo in the same row, the row is always as tall as its
+  tallest item — so the row stretched to the photo's height and the
+  top-aligned text left a visible empty gap above the tab nav. Fixed by
+  giving `.mosque-hero-media-wrap` a fixed `height: 230px` (roughly matching
+  a typical 2-line title block) instead of an `aspect-ratio` that scales with
+  column width, so the row height tracks the text in the common case instead
+  of the photo. The photo is now a wide banner crop rather than a 4:3 box on
+  desktop/tablet. The sub-720px stacked mobile layout doesn't have this
+  row-sharing problem (text and photo are no longer side by side), so it
+  overrides back to `height: auto; aspect-ratio: 4 / 3;` for a normally
+  proportioned full-width mobile photo. If retuning, remember the fixed
+  height only needs to roughly match text height, not be exact — any
+  mismatch just becomes a small, unremarkable gap instead of the ~190px void
+  this replaced.
+- **A hard horizontal seam partway down the page**, below which the gradient
+  background gave way to plain white: `html, body { height: 100%; }` (an
+  older, unscoped rule that index.html's fixed-viewport map shell depends on)
+  combined with `.mosque-body`'s `min-height: 100%` to leave `body` with an
+  explicit `height: 100%` — i.e. exactly one viewport tall, not auto-sized to
+  its content. Any page content taller than one viewport (true of most
+  mosque detail pages) overflowed that box, and the overflow renders outside
+  the box's own painted background, showing the plain (unstyled) canvas
+  instead of the gradient. Fixed by adding `height: auto;` to `.mosque-body`,
+  which — as a class selector — overrides the plain-element `body` rule's
+  `height: 100%` for `mosque.html` only; `index.html`'s intentionally
+  viewport-locked map shell is untouched. Verify with
+  `document.body.scrollHeight === document.body.offsetHeight` in devtools if
+  this regresses; they'll be unequal (offset stuck near `window.innerHeight`)
+  if the bug is back.
+- **The "N mosques across M districts." line in the map page's sidebar** was
+  removed as unwanted clutter. `getDirectoryStatus()` and `getDistrictCount()`
+  in `js/app.js` are gone; the three `setStatus(...)` call sites that used to
+  show that line (initial load success, and both sides of the per-row photo
+  warmup in `loadPhotosForRow()`) now pass `""` (success) or just
+  `UI_TEXT.loadingPhotos` (photo warmup), so `#status` stays hidden except for
+  genuine loading/error states — those are untouched (`"Loading mosque
+  data..."`, `"No valid latitude and longitude pairs..."`,
+  `"Failed to load mosque data. ..."` in `init()`), since they're diagnostic,
+  not cosmetic. `APP_CONFIG.officialMosqueCount` in `js/config.js` is no
+  longer read anywhere but was left in place as inert reference data. To
+  revert, restore the two deleted functions and the three call sites.
 
 ### Known data quirks (source sheet, not code)
 

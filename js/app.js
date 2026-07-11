@@ -1,18 +1,18 @@
-import { APP_CONFIG } from "./config.js?v=mosque-page-refresh-20260710";
+import { APP_CONFIG } from "./config.js?v=hero-gap-fix-20260710";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=mosque-page-refresh-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=mosque-page-refresh-20260710";
-import { createShrineMap } from "./map.js?v=mosque-page-refresh-20260710";
+} from "./data.js?v=hero-gap-fix-20260710";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-gap-fix-20260710";
+import { createShrineMap } from "./map.js?v=hero-gap-fix-20260710";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=mosque-page-refresh-20260710";
+} from "./utils.js?v=hero-gap-fix-20260710";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -25,7 +25,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=mosque-page-refresh-20260710";
+const PAGE_VERSION_QUERY = "v=hero-gap-fix-20260710";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -129,14 +129,6 @@ function getMapLink(row) {
   }
 
   return "";
-}
-
-function getDistrictCount(rows) {
-  return new Set(rows.map((row) => getDistrictLabel(row))).size;
-}
-
-function getDirectoryStatus(rows = state.rows) {
-  return `${APP_CONFIG.officialMosqueCount} mosques across ${getDistrictCount(rows)} districts.`;
 }
 
 function getRequestedRowId() {
@@ -647,9 +639,8 @@ async function loadPhotosForRow(rowId) {
     return;
   }
 
-  const directoryStatus = getDirectoryStatus();
   row.drivePhotosState = "loading";
-  setStatus(`${directoryStatus} ${UI_TEXT.loadingPhotos}`);
+  setStatus(UI_TEXT.loadingPhotos);
 
   try {
     await loadDrivePhotosForRow(row);
@@ -662,7 +653,7 @@ async function loadPhotosForRow(rowId) {
     row.drivePhotosState = "failed";
     console.warn("Google Drive photos could not be loaded for this mosque.", error);
   } finally {
-    setStatus(directoryStatus);
+    setStatus("");
   }
 }
 
@@ -756,7 +747,7 @@ async function init() {
     shrineMap.fitToRows(rows);
     buildTableControls();
     renderTableList("");
-    setStatus(getDirectoryStatus(rows));
+    setStatus("");
     schedulePhotoWarmup(rows);
 
     const requestedRowId = getRequestedRowId();
