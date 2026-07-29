@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-28T05:53:24.877Z",
+  "generatedAt": "2026-07-29T05:57:16.982Z",
   "photos": {
     "1MNC3rCJsgI0pD3m_t3oL2-PWO2w-7nrk": {
       "name": "Jamia Masjid Syed Emam Ali Shah Sangala_M",
@@ -10559,6 +10559,28 @@
       "files": {
         "small": "photos/jamia-masjid-main-bazar-kahchu-pura-lahore/outside_1_w400.webp",
         "large": "photos/jamia-masjid-main-bazar-kahchu-pura-lahore/outside_1_w1200.webp"
+      }
+    },
+    "1mNTRrtpm35aFnmwXXnrCR-GnGH0y98wq": {
+      "name": "Jamia Masjid Muhammadiya Qasim Bazar Faisalabad_I.jpeg",
+      "modifiedTime": "2026-07-28T18:44:54.000Z",
+      "mosqueKey": "jamia masjid muhammadiya qasim bazar faisalabad",
+      "type": "inside",
+      "sequence": 1,
+      "files": {
+        "small": "photos/jamia-masjid-muhammadiya-qasim-bazar-faisalabad/inside_1_w400.webp",
+        "large": "photos/jamia-masjid-muhammadiya-qasim-bazar-faisalabad/inside_1_w1200.webp"
+      }
+    },
+    "1aOOcyjgt7Ujr4_8JxU6mtYDHJh-vZJqi": {
+      "name": "Jamia Masjid Muhammadiya Qasim Bazar Faisalabad_M.jpeg",
+      "modifiedTime": "2026-07-28T18:44:42.000Z",
+      "mosqueKey": "jamia masjid muhammadiya qasim bazar faisalabad",
+      "type": "main",
+      "sequence": 0,
+      "files": {
+        "small": "photos/jamia-masjid-muhammadiya-qasim-bazar-faisalabad/main_0_w400.webp",
+        "large": "photos/jamia-masjid-muhammadiya-qasim-bazar-faisalabad/main_0_w1200.webp"
       }
     }
   }
