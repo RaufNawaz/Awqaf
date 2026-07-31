@@ -33,6 +33,7 @@ The site is plain HTML, CSS, and browser JavaScript. There is no build step, pac
     |-- drive-photos.js     Google Drive photo listing, matching, caching, thumbnail URLs
     |-- map.js              Leaflet map wrapper and marker rendering
     |-- mosque.js           Individual mosque page controller
+    |-- shrine-links.js     Mapping from records to Sufi Shrines archive pages
     `-- utils.js            Shared parsing, escaping, URL, and formatting helpers
 ```
 
@@ -309,6 +310,32 @@ Startup flow:
 6. Re-render once photos are available.
 
 This makes the page feel faster because public facts, narrative text, nearby mosques, and map content do not wait for the Drive photo list.
+
+## 11b. Links to the Sufi Shrines Archive (added 2026-07-31)
+
+`js/shrine-links.js` maps Auqaf records to their pages on the Sufi Shrines
+archive (`https://raufnawaz.github.io/Sufi-Shrines/`). When `getShrineLink(row)`
+resolves, three placements render a link automatically:
+
+- Map drawer: the name under "Associated Shrine" becomes the link.
+- Mosque page, "About this mosque": an extra sentence linking the shrine.
+- Mosque page, "Public details" panel: the "Associated shrine" value links out.
+
+If nothing resolves, all three fall back to the pre-2026-07-31 plain-text
+behavior, so unmapped mosques are unaffected.
+
+**To link another shrine:** add one entry to `SHRINE_PAGE_LINKS` in
+`js/shrine-links.js` (key = the sheet's "Shrine Name" value, lowercased;
+value = display name + shrine page URL). Alias spellings are fine — matching is
+case/punctuation-insensitive, also checks the mosque name columns, and finally
+falls back to a substring match (so "Jamia Masjid Bibi Pak Daman Lahore"
+resolves even if the "Shrine Name" cell is empty).
+
+The same commit restyled the drawer title as an explicit link (`.details-title-link`),
+added mobile hardening for `mosque.html` (see the block at the end of
+`style.css`), and bumped the cache token to `v=shrine-links-20260731`. When you
+change JS or CSS again, bump the token everywhere in one commit (it appears in
+`index.html`, `mosque.html`, and every intra-JS import).
 
 ## 12. Styling System
 
