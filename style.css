@@ -198,12 +198,22 @@ h1 {
 }
 
 .details-title-link {
-  color: inherit;
-  text-decoration: none;
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(11, 95, 134, 0.55);
+  transition: color 140ms ease, text-decoration-color 140ms ease;
 }
 
 .details-title-link:hover,
 .details-title-link:focus-visible {
+  color: var(--accent-strong);
+  text-decoration-color: currentColor;
+}
+
+/* Links out to the Sufi Shrines archive (drawer "Associated Shrine" row) */
+.shrine-page-link {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
@@ -1035,6 +1045,27 @@ input:focus-visible {
   line-height: 1.75;
 }
 
+.mosque-shrine-note {
+  margin: 0;
+  color: #4d5c70;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.mosque-shrine-note-link,
+.mosque-fact-link {
+  color: var(--mosque-accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.mosque-shrine-note-link:hover,
+.mosque-fact-link:hover {
+  color: var(--mosque-accent-strong);
+}
+
 .mosque-action-row {
   display: flex;
   flex-wrap: wrap;
@@ -1579,5 +1610,62 @@ input:focus-visible {
 
   .mosque-sidebar-card {
     padding: 22px 20px 24px;
+  }
+}
+
+/* --- Mobile hardening (v=shrine-links-20260731): prevent horizontal scroll on
+   phones. Scoped to the mosque detail page. --- */
+.mosque-body {
+  overflow-x: clip;
+}
+
+.mosque-page {
+  max-width: min(1220px, 100vw);
+}
+
+.mosque-shell,
+.mosque-layout > *,
+.mosque-main > *,
+.mosque-hero-top > *,
+.mosque-aside > * {
+  min-width: 0;
+}
+
+.mosque-page img,
+.mosque-page iframe {
+  max-width: 100%;
+}
+
+.mosque-richtext p,
+.mosque-shrine-note,
+.mosque-fact dd,
+.mosque-address-text,
+.mosque-nearby-name,
+.mosque-nearby-meta,
+.mosque-title {
+  overflow-wrap: break-word;
+}
+
+.mosque-coordinate-card code {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 430px) {
+  .mosque-page {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .mosque-title {
+    font-size: 2rem;
+  }
+
+  .mosque-coordinate-card {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .mosque-hero-media-wrap {
+    max-width: 100%;
   }
 }

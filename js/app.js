@@ -1,18 +1,19 @@
-import { APP_CONFIG } from "./config.js?v=hero-photo-cap-20260710";
+import { APP_CONFIG } from "./config.js?v=shrine-links-20260731";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=hero-photo-cap-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-photo-cap-20260710";
-import { createShrineMap } from "./map.js?v=hero-photo-cap-20260710";
+} from "./data.js?v=shrine-links-20260731";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=shrine-links-20260731";
+import { createShrineMap } from "./map.js?v=shrine-links-20260731";
+import { getShrineLink } from "./shrine-links.js?v=shrine-links-20260731";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=hero-photo-cap-20260710";
+} from "./utils.js?v=shrine-links-20260731";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -25,7 +26,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=hero-photo-cap-20260710";
+const PAGE_VERSION_QUERY = "v=shrine-links-20260731";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -392,11 +393,20 @@ function renderDetails(row) {
   appendTextRow(elements.details, "Imam", formatTitleCaseName(row.imamName));
   appendTextRow(elements.details, "Built", row.mosqueBuiltDate);
   appendTextRow(elements.details, "Women's Prayer Section", row.womensPrayerSection);
-  appendTextRow(
-    elements.details,
-    "Associated Shrine",
-    row.shrineName && row.shrineName !== row.title ? row.shrineName : "",
-  );
+  const associatedShrineName =
+    row.shrineName && row.shrineName !== row.title ? row.shrineName : "";
+  const shrineLink = getShrineLink(row);
+  if (shrineLink) {
+    appendLinkRow(
+      elements.details,
+      "Associated Shrine",
+      shrineLink.url,
+      associatedShrineName || shrineLink.name,
+      "shrine-page-link",
+    );
+  } else {
+    appendTextRow(elements.details, "Associated Shrine", associatedShrineName);
+  }
   appendLinkRow(
     elements.details,
     "Location",

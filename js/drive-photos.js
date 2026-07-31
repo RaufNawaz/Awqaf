@@ -1,9 +1,9 @@
-import { APP_CONFIG } from "./config.js?v=hero-photo-cap-20260710";
+import { APP_CONFIG } from "./config.js?v=shrine-links-20260731";
 import {
   buildGoogleDriveThumbnailUrl,
   cleanCellValue,
   normalizeSearchText,
-} from "./utils.js?v=hero-photo-cap-20260710";
+} from "./utils.js?v=shrine-links-20260731";
 
 const IMAGE_EXTENSION_RE = /\.(avif|gif|heic|heif|jpe?g|png|webp|svg)$/i;
 const NAMED_MAIN_PHOTO_RE = /^(.+)_M(?:\.(?:avif|gif|heic|heif|jpe?g|png|webp|svg))?$/i;

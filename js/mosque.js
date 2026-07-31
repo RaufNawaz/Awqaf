@@ -1,13 +1,14 @@
-import { APP_CONFIG } from "./config.js?v=hero-photo-cap-20260710";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=hero-photo-cap-20260710";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=hero-photo-cap-20260710";
+import { APP_CONFIG } from "./config.js?v=shrine-links-20260731";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=shrine-links-20260731";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=shrine-links-20260731";
+import { getShrineLink } from "./shrine-links.js?v=shrine-links-20260731";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=hero-photo-cap-20260710";
+} from "./utils.js?v=shrine-links-20260731";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -40,9 +41,11 @@ const UI_TEXT = {
   built: "Built",
   womensPrayer: "Women's prayer section",
   associatedShrine: "Associated shrine",
+  shrineNotePrefix: "More information on the associated shrine,",
+  shrineNoteSuffix: "is available on the Sufi Shrines archive.",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=hero-photo-cap-20260710";
+const PAGE_VERSION_QUERY = "v=shrine-links-20260731";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -300,6 +303,26 @@ function getNearbyMosques(rows, currentRow, limit = 4) {
     .slice(0, limit);
 }
 
+function renderShrineLinkNote(row) {
+  const shrineLink = getShrineLink(row);
+  if (!shrineLink) return "";
+
+  const shrineName = getAssociatedShrine(row) || shrineLink.name;
+
+  return `
+    <p class="mosque-shrine-note">
+      ${escapeHtml(UI_TEXT.shrineNotePrefix)}
+      <a
+        class="mosque-shrine-note-link"
+        href="${escapeHtml(shrineLink.url)}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >${escapeHtml(shrineName)}</a>,
+      ${escapeHtml(UI_TEXT.shrineNoteSuffix)}
+    </p>
+  `;
+}
+
 function renderFactRows(items) {
   const filtered = items.filter(({ value }) => Boolean(value));
   if (!filtered.length) return "";
@@ -308,10 +331,14 @@ function renderFactRows(items) {
     <dl class="mosque-fact-list">
       ${filtered
         .map(
-          ({ label, value }) => `
+          ({ label, value, href }) => `
             <div class="mosque-fact">
               <dt>${escapeHtml(label)}</dt>
-              <dd>${escapeHtml(value)}</dd>
+              <dd>${
+                href
+                  ? `<a class="mosque-fact-link" href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`
+                  : escapeHtml(value)
+              }</dd>
             </div>
           `,
         )
@@ -510,6 +537,7 @@ function renderHeroPhoto(photo, hasGallery) {
 }
 
 function renderPage(rows, row) {
+  const shrineLink = getShrineLink(row);
   const narrative = buildNarrative(row);
   const galleryItems = buildPhotoItems(row);
   const heroPhoto = galleryItems[0] || null;
@@ -527,7 +555,11 @@ function renderPage(rows, row) {
     { label: UI_TEXT.imam, value: formatTitleCaseName(row.imamName) },
     { label: UI_TEXT.built, value: row.mosqueBuiltDate },
     { label: UI_TEXT.womensPrayer, value: row.womensPrayerSection },
-    { label: UI_TEXT.associatedShrine, value: getAssociatedShrine(row) },
+    {
+      label: UI_TEXT.associatedShrine,
+      value: getAssociatedShrine(row) || shrineLink?.name || "",
+      href: shrineLink?.url || "",
+    },
   ];
   pageEl.innerHTML = `
     <div class="mosque-shell">
@@ -575,6 +607,7 @@ function renderPage(rows, row) {
             </div>
             <div class="mosque-richtext">
               ${formatParagraphs([narrative.intro, ...narrative.body])}
+              ${renderShrineLinkNote(row)}
             </div>
           </section>
 
