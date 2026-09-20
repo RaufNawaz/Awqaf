@@ -1,4 +1,4 @@
-import { APP_CONFIG } from "./config.js?v=shrine-links-20260731";
+import { APP_CONFIG } from "./config.js?v=photo-startup-20260920";
 
 const IS_COARSE_POINTER =
   typeof window !== "undefined" &&
@@ -166,7 +166,7 @@ export function createShrineMap({ onSelect, onMapClick }) {
     });
   }
 
-  function focusRow(row) {
+  function focusRow(row, { animate = true } = {}) {
     const marker = markersById.get(row.id);
     if (!marker) return;
 
@@ -177,9 +177,13 @@ export function createShrineMap({ onSelect, onMapClick }) {
     const targetPoint = map.project(marker.getLatLng(), targetZoom).subtract([offsetX, offsetY]);
     const shiftedLatLng = map.unproject(targetPoint, targetZoom);
 
-    map.flyTo(shiftedLatLng, targetZoom, {
-      duration: 0.55,
-    });
+    if (animate) {
+      map.flyTo(shiftedLatLng, targetZoom, {
+        duration: 0.55,
+      });
+    } else {
+      map.setView(shiftedLatLng, targetZoom, { animate: false });
+    }
   }
 
   function invalidateSize() {

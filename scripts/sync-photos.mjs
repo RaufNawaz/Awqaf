@@ -1,20 +1,19 @@
 #!/usr/bin/env node
 // Syncs mosque photos from the Google Drive folder into ./photos as pre-sized
-// WebP thumbnails, tracked in photos/index.json. This runs in CI (see
+// WebP thumbnails, tracked in photos/index.json and small per-mosque
+// manifests. This runs in CI (see
 // .github/workflows/sync-photos.yml) because it needs write access to commit
 // the results back to the repo -- the browser can only read the repo, it
-// cannot write to it. The live site prefers these local files and falls back
-// to live Drive thumbnails for anything this script hasn't synced yet (see
-// loadLocalPhotoIndex() in js/drive-photos.js).
+// cannot write to it. Visitors only read these local files; they never call
+// the Apps Script or list Google Drive themselves.
 //
-// Keep APPS_SCRIPT_URL and the parsing rules below in sync with
-// APP_CONFIG.drivePhotos in js/config.js and the matching logic in
-// js/drive-photos.js -- they intentionally duplicate that (small) logic
-// rather than importing it, since this script runs under plain Node and the
-// browser modules are not meant to be imported outside a browser.
+// Keep the parsing rules below in sync with the matching logic in
+// js/drive-photos.js. They intentionally duplicate that small piece of logic
+// because this script runs under Node while the site modules run in a browser.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { writePerMosquePhotoManifests } from "./write-photo-manifests.mjs";
 
 const APPS_SCRIPT_URL =
   "https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQiDLGl7D1CHZw5lNOslN7cveZmy08l_FVVJv_xetYhyUgZohHMaKwpKKTGwvbB4puELDAmigTkDp-gGjYglTOvkMxn2PrIRC_euJwvjaL6wWFFli08TD3pZJ4Zx_aRCwipuGtHrsvLejlMTz7kRYuOKIu_w7Ux00YpuF9D2OBWoO7BQa_GhdGeeX-vdoQFGibwNFrABMcEVPujYGY13YcQhF22nThKA4dnsRxvRPbrwLrK0eQ972WEg3sy6OYMk_6ogz1OakZp6NAkVKVQ6_AA5aFTdg&lib=MpWdW5Xnf2iro3L6DlvNqqeSOIo3kG7Kb";
@@ -264,9 +263,10 @@ async function main() {
   manifest.generatedAt = new Date().toISOString();
   await mkdir(PHOTOS_DIR, { recursive: true });
   await writeFile(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  const mosqueManifestCount = await writePerMosquePhotoManifests(manifest);
 
   console.log(
-    `Photo sync complete: ${added} added, ${updated} updated, ${removed} removed, ${skipped} skipped.`,
+    `Photo sync complete: ${added} added, ${updated} updated, ${removed} removed, ${skipped} skipped, ${mosqueManifestCount} mosque manifests.`,
   );
 }
 

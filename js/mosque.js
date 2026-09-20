@@ -1,14 +1,14 @@
-import { APP_CONFIG } from "./config.js?v=shrine-links-20260731";
-import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=shrine-links-20260731";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=shrine-links-20260731";
-import { getShrineLink } from "./shrine-links.js?v=shrine-links-20260731";
+import { APP_CONFIG } from "./config.js?v=photo-startup-20260920";
+import { loadDrivePhotosForRow, loadShrineRows } from "./data.js?v=photo-startup-20260920";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photo-startup-20260920";
+import { getShrineLink } from "./shrine-links.js?v=photo-startup-20260920";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=shrine-links-20260731";
+} from "./utils.js?v=photo-startup-20260920";
 
 const UI_TEXT = {
   loading: "Loading mosque details...",
@@ -45,7 +45,7 @@ const UI_TEXT = {
   shrineNoteSuffix: "is available on the Sufi Shrines archive.",
   coordinates: "Coordinates",
 };
-const PAGE_VERSION_QUERY = "v=shrine-links-20260731";
+const PAGE_VERSION_QUERY = "v=photo-startup-20260920";
 
 const pageEl = document.getElementById("mosquePage");
 
@@ -702,7 +702,7 @@ function renderMessage(title, message) {
 }
 
 async function loadPageDrivePhotos(rows, row) {
-  if (APP_CONFIG.drivePhotos?.enabled === false || row.drivePhotosState === "loaded") {
+  if (APP_CONFIG.localPhotos?.enabled === false || row.drivePhotosState === "loaded") {
     return;
   }
 
@@ -714,21 +714,8 @@ async function loadPageDrivePhotos(rows, row) {
     renderPage(rows, row);
   } catch (error) {
     row.drivePhotosState = "failed";
-    console.warn("Google Drive photos could not be loaded after initial render.", error);
+    console.warn("Synced photos could not be loaded after initial render.", error);
   }
-}
-
-function schedulePagePhotoLoad(rows, row) {
-  const loadPhotos = () => {
-    void loadPageDrivePhotos(rows, row);
-  };
-
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(loadPhotos, { timeout: 800 });
-    return;
-  }
-
-  window.setTimeout(loadPhotos, 0);
 }
 
 async function init() {
@@ -752,7 +739,7 @@ async function init() {
     }
 
     renderPage(rows, row);
-    schedulePagePhotoLoad(rows, row);
+    void loadPageDrivePhotos(rows, row);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     renderMessage(UI_TEXT.failedTitle, `${UI_TEXT.failedPrefix} ${message}`);

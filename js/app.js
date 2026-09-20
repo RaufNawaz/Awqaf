@@ -1,19 +1,19 @@
-import { APP_CONFIG } from "./config.js?v=shrine-links-20260731";
+import { APP_CONFIG } from "./config.js?v=photo-startup-20260920";
 import {
   loadDrivePhotosForRow,
   loadDrivePhotosForRows,
   loadShrineRows,
-} from "./data.js?v=shrine-links-20260731";
-import { formatDrivePhotoLabel } from "./drive-photos.js?v=shrine-links-20260731";
-import { createShrineMap } from "./map.js?v=shrine-links-20260731";
-import { getShrineLink } from "./shrine-links.js?v=shrine-links-20260731";
+} from "./data.js?v=photo-startup-20260920";
+import { formatDrivePhotoLabel } from "./drive-photos.js?v=photo-startup-20260920";
+import { createShrineMap } from "./map.js?v=photo-startup-20260920";
+import { getShrineLink } from "./shrine-links.js?v=photo-startup-20260920";
 import {
   escapeHtml,
   formatTitleCaseName,
   joinBits,
   normalizeSearchText,
   wait,
-} from "./utils.js?v=shrine-links-20260731";
+} from "./utils.js?v=photo-startup-20260920";
 
 const UI_TEXT = {
   loading: "Loading mosque data...",
@@ -26,7 +26,7 @@ const UI_TEXT = {
   viewGallery: "View gallery",
 };
 const SIDEBAR_PHOTO_PREVIEW_LIMIT = 2;
-const PAGE_VERSION_QUERY = "v=shrine-links-20260731";
+const PAGE_VERSION_QUERY = "v=photo-startup-20260920";
 
 const elements = {
   sidebar: document.getElementById("sidebar"),
@@ -423,7 +423,7 @@ function getRowById(rowId) {
   return state.rows.find((row) => row.id === rowId) || null;
 }
 
-function selectRow(rowId, { shouldFocusMap = true } = {}) {
+function selectRow(rowId, { shouldFocusMap = true, animateMap = true } = {}) {
   const row = getRowById(rowId);
   if (!row) return;
 
@@ -431,17 +431,19 @@ function selectRow(rowId, { shouldFocusMap = true } = {}) {
   setCurrentMapRowId(rowId);
   shrineMap.setSelected(rowId);
   renderDetails(row);
-  schedulePhotoLoad(rowId);
+  void loadPhotosForRow(rowId);
   openSidebar();
   hideTablePanel();
 
   if (shouldFocusMap) {
-    shrineMap.focusRow(row);
-    window.setTimeout(() => {
-      if (state.selectedId === rowId) {
-        shrineMap?.focusRow(row);
-      }
-    }, 280);
+    shrineMap.focusRow(row, { animate: animateMap });
+    if (animateMap) {
+      window.setTimeout(() => {
+        if (state.selectedId === rowId) {
+          shrineMap?.focusRow(row);
+        }
+      }, 280);
+    }
   }
 }
 
@@ -661,32 +663,21 @@ async function loadPhotosForRow(rowId) {
     }
   } catch (error) {
     row.drivePhotosState = "failed";
-    console.warn("Google Drive photos could not be loaded for this mosque.", error);
+    console.warn("Synced photos could not be loaded for this mosque.", error);
   } finally {
     setStatus("");
   }
 }
 
-function schedulePhotoLoad(rowId) {
-  const loadPhotos = () => {
-    void loadPhotosForRow(rowId);
-  };
-
-  if (typeof window.requestIdleCallback === "function") {
-    window.requestIdleCallback(loadPhotos, { timeout: 1500 });
-    return;
-  }
-
-  window.setTimeout(loadPhotos, 0);
-}
-
 async function warmDrivePhotosForRows(rows) {
-  if (APP_CONFIG.drivePhotos?.enabled === false || !rows.length) {
+  if (APP_CONFIG.localPhotos?.enabled === false || !rows.length) {
     return;
   }
 
   try {
-    await loadDrivePhotosForRows(rows);
+    const didLoadPhotos = await loadDrivePhotosForRows(rows);
+    if (!didLoadPhotos) return;
+
     rows.forEach((row) => {
       row.drivePhotosState = "loaded";
     });
@@ -698,7 +689,7 @@ async function warmDrivePhotosForRows(rows) {
       }
     }
   } catch (error) {
-    console.warn("Google Drive photos could not be warmed in the background.", error);
+    console.warn("Synced photos could not be warmed in the background.", error);
   }
 }
 
@@ -754,19 +745,19 @@ async function init() {
     }
 
     shrineMap.render(rows);
-    shrineMap.fitToRows(rows);
     buildTableControls();
     renderTableList("");
     setStatus("");
-    schedulePhotoWarmup(rows);
 
     const requestedRowId = getRequestedRowId();
     if (requestedRowId && getRowById(requestedRowId)) {
-      selectRow(requestedRowId, { shouldFocusMap: true });
+      selectRow(requestedRowId, { shouldFocusMap: true, animateMap: false });
     } else {
+      shrineMap.fitToRows(rows);
       clearDetails();
       collapseSidebar();
     }
+    schedulePhotoWarmup(rows);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     setStatus(`Failed to load mosque data. ${message}`);

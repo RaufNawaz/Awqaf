@@ -1,6 +1,6 @@
 # Awqaf Website Handoff
 
-Last updated: 2026-07-10
+Last updated: 2026-09-20
 
 ## 1. Project Overview
 
@@ -9,7 +9,7 @@ This repository is a static website for the Awqaf mosque directory. It has two p
 - `index.html`: interactive Leaflet map and searchable mosque directory.
 - `mosque.html`: detail page for one mosque, reached with `mosque.html?id=...`.
 
-The site is plain HTML, CSS, and browser JavaScript. There is no build step, package manager requirement, backend server, or bundled database. Live data comes from a published Google Sheet CSV. Photos come from a Google Drive folder through an Apps Script listing endpoint.
+The site is plain HTML, CSS, and browser JavaScript. There is no build step, package manager requirement, backend server, or bundled database. Live data comes from a published Google Sheet CSV. A nightly GitHub Action mirrors photos from Google Drive into same-origin WebP files and static manifests.
 
 ## 2. Repository Structure
 
@@ -18,19 +18,20 @@ The site is plain HTML, CSS, and browser JavaScript. There is no build step, pac
 |-- index.html              Main map/directory page
 |-- mosque.html             Individual mosque detail page
 |-- style.css               Shared styling for map, drawer, and detail page
-|-- sw.js                   Service worker that caches Drive thumbnails and local photos
+|-- sw.js                   Service worker that caches photo manifests and image files
 |-- README.md               Public setup and usage notes
 |-- PROJECT_HANDOFF.md      This handoff document
-|-- photos/                 Repo-committed WebP thumbnails + index.json manifest (synced from Drive)
+|-- photos/                 Repo-committed WebP thumbnails + full/per-mosque manifests
 |-- scripts/
-|   `-- sync-photos.mjs     Node/CI script that syncs Drive photos into photos/
+|   |-- sync-photos.mjs     Node/CI script that syncs Drive photos into photos/
+|   `-- write-photo-manifests.mjs  Generates the per-mosque manifests
 |-- .github/workflows/
 |   `-- sync-photos.yml     GitHub Action that runs the sync on a schedule or manually
 `-- js/
     |-- app.js              Main map page controller
     |-- config.js           Data source, photo source, map layer config, CSV columns
     |-- data.js             CSV parsing and row normalization
-    |-- drive-photos.js     Google Drive photo listing, matching, caching, thumbnail URLs
+    |-- drive-photos.js     Local photo manifest loading, matching, and caching
     |-- map.js              Leaflet map wrapper and marker rendering
     |-- mosque.js           Individual mosque page controller
     |-- shrine-links.js     Mapping from records to Sufi Shrines archive pages
@@ -70,10 +71,9 @@ Branch model (as of 2026-07):
   Action commits photos to. All feature branches merge back here.
 - `origin/main` — stale, predates the `1.1` workflow; not deployed.
 - Feature branches: **merge `1.1` in before local testing.** The photo sync
-  bot commits `photos/` (960 WebP files, ~166 MB) to `1.1` nightly, so any
-  branch cut before the latest sync has a stale or empty `photos/index.json`
-  and silently falls back to the slow live-Drive photo path. This bit us
-  twice — it looks like "photos are broken again" but is just a stale branch.
+  bot commits `photos/` to `1.1` nightly, so a stale branch can be missing
+  recent thumbnails or manifests. The browser intentionally has no live-Drive
+  fallback.
 
 Deployment checklist:
 
@@ -124,12 +124,12 @@ Photos are stored in this Google Drive folder:
 https://drive.google.com/drive/folders/15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo
 ```
 
-The browser does not download a folder manually. Instead:
+The visitor browser never lists this folder. Instead:
 
-1. `js/drive-photos.js` asks the Apps Script URL in `APP_CONFIG.drivePhotos.appsScriptUrl` for a list of Drive image files.
-2. The file names are parsed and matched to mosque rows.
-3. The site builds Google Drive thumbnail URLs for each matched file.
-4. The map drawer and detail page render the correct thumbnail size for the UI slot.
+1. The nightly GitHub Action lists Drive through its CI-only Apps Script endpoint.
+2. The sync script parses names, generates two WebP sizes, and commits them.
+3. It writes `photos/index.json` plus small `photos/by-mosque/*.json` manifests.
+4. The site serves those same-origin files from GitHub Pages.
 
 Recommended file naming:
 
@@ -147,7 +147,7 @@ Meaning:
   than one inside photo for the same mosque (`_I_1`, `_I_2`, ...); a bare `_I`
   is fine for a single photo, and is in fact the convention most of the
   existing Drive folder actually uses. Files without a number are ordered by
-  upload time (`assignAutoSequences()` in `js/drive-photos.js`).
+  upload time (`assignAutoSequences()` in `scripts/sync-photos.mjs`).
 - `_O` or `_O_#`: outside photo, same rule.
 
 Legacy numbered files are still accepted:
@@ -172,13 +172,13 @@ hotlinking Drive on every view.
 - The Action runs nightly and can also be triggered manually
   (`workflow_dispatch`). It intentionally never runs on `push`, since it
   commits back to the repo and a push trigger would loop.
-- It lists the Drive folder via the same Apps Script endpoint the browser
-  uses, diffs against the committed `photos/index.json` manifest by Drive
+- It lists the Drive folder via a CI-only Apps Script endpoint, diffs against
+  the committed `photos/index.json` manifest by Drive
   file id and `modifiedTime`, and only downloads/converts what changed, so
   commits stay small.
 - Each changed photo is written as two WebP sizes (`~w400` small, `~w1200`
-  large) under `photos/<mosque-slug>/`, and `photos/index.json` is rewritten
-  to match. Files for photos removed from Drive are deleted the same way.
+  large) under `photos/<mosque-slug>/`. The full index and per-mosque
+  manifests are then regenerated. Files removed from Drive are deleted.
 - Staff upload workflow is unchanged: keep using the `_M` / `_I_#` / `_O_#`
   naming convention in the same Drive folder. The Action is what picks up new
   uploads; there is no manual publishing step.
@@ -192,22 +192,21 @@ Two constraints specific to deploying on GitHub Pages:
   originals.** Drive remains the permanent archive. This keeps `photos/`
   small relative to GitHub Pages' repo-size and bandwidth limits.
 
-At runtime, `js/drive-photos.js` builds a local photo index from
-`photos/index.json` (`loadLocalPhotoIndex()`) and merges it with the live
-Drive listing (`loadRemoteDrivePhotoIndex()`) inside `loadDrivePhotoIndex()`.
-Local entries win when a mosque has been synced; the Drive listing fills in
-anything not synced yet. Row matching, the map pop-up preview, and the
-detail-page gallery/hero all read the same photo entry shape regardless of
-source, so they needed no changes.
+At runtime, `js/drive-photos.js` loads the selected mosque's small manifest
+immediately. The map page fetches `photos/index.json` only during idle time to
+warm all remaining rows. There is no visitor-side Apps Script or Drive listing
+request. The legacy photo URL columns in the published CSV remain the fallback
+when no synced entry is available.
 
-## 7. Apps Script Setup
+## 7. CI-only Apps Script Setup
 
-The recommended no-API-key setup uses Google Apps Script. The Apps Script lists files from the Drive folder and returns JSON or JSONP.
+The sync job uses Google Apps Script to list files from the Drive folder. Site
+visitors never call this endpoint.
 
 Config location:
 
 ```js
-APP_CONFIG.drivePhotos.appsScriptUrl
+APPS_SCRIPT_URL in scripts/sync-photos.mjs
 ```
 
 Access requirements:
@@ -217,35 +216,30 @@ Access requirements:
 - Allow access to anyone.
 - The Drive folder and uploaded images should be viewable by anyone with the link.
 
-If replacing the Apps Script deployment, update `appsScriptUrl` in `js/config.js`.
-
-Optional fallback:
-
-```js
-APP_CONFIG.drivePhotos.apiKey
-```
-
-If using a Google Drive API key, restrict it to the Google Drive API and the production domain.
+If replacing the Apps Script deployment, update `APPS_SCRIPT_URL` in
+`scripts/sync-photos.mjs`. Do not add the endpoint to `js/config.js`.
 
 ## 8. Photo Performance Decisions
 
-The photo system was optimized on 2026-06-25 because images felt slow and redundant when opening and switching mosques.
+The current loading order was implemented on 2026-09-20 to keep photos off the
+slow visitor-side Drive path.
 
 Key decisions:
 
-1. The map page no longer blocks first load on Drive photo metadata.
-2. The Drive file list is cached in `localStorage` under `awqaf-drive-photo-files-v3`.
-3. `drive-photos.js` now keeps a module-level in-memory photo index, so the index is built once per page session instead of being rebuilt on every shrine click.
-4. Row-level photo matches are cached in memory, so repeated selection of the same mosque is instant.
-5. The map page warms the Drive photo metadata in the background after the map and directory are usable.
-6. The detail page renders text and map content first, then hydrates photos asynchronously.
+1. The selected mosque loads its small same-origin manifest immediately.
+2. Only other mosques wait for idle-time loading of the full manifest.
+3. The full local photo index and row-level matches are cached in memory.
+4. The service worker serves cached manifests immediately and revalidates them
+   in the background.
+5. Neither page calls Apps Script or lists Drive from the visitor browser.
+6. A URL-selected map row uses a direct, non-animated `setView`, skipping the
+   country-wide `fitBounds` and `flyTo` sequence.
 7. Different UI slots request different thumbnail sizes:
    - Sidebar thumbnails: `w360`
    - Sidebar preview image: `w640`
    - Detail gallery images: `w1200`
    - Detail hero image: `w1200`
-8. `sw.js` caches Drive thumbnail responses so repeat visits and repeat shrine switches reuse cached images.
-9. HTML preconnects include Drive, `lh3.googleusercontent.com`, and Apps Script hosts to reduce connection setup time.
+8. `sw.js` caches local images and manifests for repeat visits.
 
 These changes reduce both metadata work and actual image bytes.
 
@@ -254,16 +248,16 @@ These changes reduce both metadata work and actual image bytes.
 `sw.js` handles three kinds of requests, each in its own cache:
 
 ```text
-https://drive.google.com/thumbnail?id=...&sz=...   (awqaf-drive-thumbnails-v2)
-<origin>/photos/index.json                          (awqaf-photo-manifest-v1)
-<origin>/photos/...                                 (awqaf-local-photos-v1)
+https://drive.google.com/thumbnail?id=...&sz=...   (awqaf-drive-thumbnails-v2; legacy CSV fallback)
+<origin>/photos/*.json and /photos/by-mosque/*.json (awqaf-photo-manifest-v2)
+<origin>/photos/.../*.webp                           (awqaf-local-photos-v1)
 ```
 
 Behavior:
 
-- Cache-first for Drive thumbnails and local `photos/` image files.
-- Network-first (falling back to cache) for `photos/index.json`, so a fresh
-  sync is picked up quickly instead of being pinned by an old cached manifest.
+- Cache-first for legacy Drive thumbnails and local `photos/` image files.
+- Stale-while-revalidate for full and per-mosque manifests: cached metadata is
+  immediate, and the latest nightly sync is fetched in the background.
 - Keeps up to 180 Drive thumbnail entries and 400 local photo entries.
 - Ignores map tiles, CSV, scripts, CSS, and HTML.
 - Works on `http://localhost` and HTTPS.
@@ -283,17 +277,16 @@ Startup flow:
    plain layer group (see §18 "Marker clustering" for tuning/removal).
 3. Load CSV rows with `loadShrineRows({ includeDrivePhotos: false })`.
 4. Render markers and searchable district list.
-5. Clear the `#status` line (it only shows loading/error text now — see
-   §18 "Mosque detail-page follow-up fixes" for why the old mosque-count
-   line was removed).
-6. Schedule background Drive photo warmup.
-7. If the URL has `?id=...`, select that row.
+5. If the URL has `?id=...`, select it directly with no country-wide fit or
+   animated fly-to; otherwise fit the map to all rows.
+6. Load the selected mosque's small manifest immediately.
+7. Schedule idle-time loading of the full local photo manifest for other rows.
 
 On marker/list click:
 
 1. Set selected row ID in state and URL.
 2. Render text details immediately.
-3. Load or reuse Drive photos for that row.
+3. Load or reuse the synced local photos for that row immediately.
 4. Re-render the drawer if photos arrive while the row is still selected.
 
 ## 11. Detail Page Flow
@@ -304,12 +297,13 @@ Startup flow:
 
 1. Wait for Papa Parse.
 2. Read `id` or `mosque` from the URL.
-3. Load CSV rows without blocking on Drive photos.
+3. Load CSV rows without blocking on photo metadata.
 4. Render the detail page immediately.
-5. Schedule Drive photo loading.
+5. Start the selected mosque's per-mosque manifest request immediately.
 6. Re-render once photos are available.
 
-This makes the page feel faster because public facts, narrative text, nearby mosques, and map content do not wait for the Drive photo list.
+This keeps public facts, narrative text, nearby mosques, and map content
+independent from photo loading while still prioritizing the selected photo.
 
 ## 11b. Links to the Sufi Shrines Archive (added 2026-07-31)
 
@@ -331,11 +325,11 @@ case/punctuation-insensitive, also checks the mosque name columns, and finally
 falls back to a substring match (so "Jamia Masjid Bibi Pak Daman Lahore"
 resolves even if the "Shrine Name" cell is empty).
 
-The same commit restyled the drawer title as an explicit link (`.details-title-link`),
-added mobile hardening for `mosque.html` (see the block at the end of
-`style.css`), and bumped the cache token to `v=shrine-links-20260731`. When you
-change JS or CSS again, bump the token everywhere in one commit (it appears in
-`index.html`, `mosque.html`, and every intra-JS import).
+That release also restyled the drawer title as an explicit link
+(`.details-title-link`) and added mobile hardening for `mosque.html` (see the
+block at the end of `style.css`). The current cache token is
+`v=photo-startup-20260920`; when changing JS or CSS again, bump it everywhere
+in one commit.
 
 ## 12. Styling System
 
@@ -370,20 +364,19 @@ Cache layers:
 
 - Browser HTTP cache for normal static assets.
 - A shared version query string on JS modules and, as of 2026-07-10,
-  `style.css` too — currently `hero-photo-cap-20260710`.
-- Apps Script cache, described in `README.md`.
-- Browser `localStorage` cache for Drive file metadata, TTL 5 minutes.
-- In-memory Drive photo index for the current page session.
+  `style.css` too — currently `photo-startup-20260920`.
+- In-memory local photo index for the current page session.
 - In-memory row match cache for selected rows.
-- Service worker thumbnail cache for repeated Drive images.
-- Service worker cache-first store for repo-served `photos/` thumbnails, plus
-  a network-first cache for the `photos/index.json` manifest.
-- Committed `photos/index.json`, refreshed on each GitHub Action sync run.
+- Service worker cache-first store for repo-served thumbnails.
+- Service worker stale-while-revalidate cache for the full and per-mosque
+  manifests.
+- Committed photo files and manifests, refreshed by each GitHub Action run.
 
 When photos are added to Drive:
 
-- The Apps Script and browser metadata caches may take a few minutes to refresh.
-- Hard refresh or clear site data if testing immediately.
+- Allow the nightly Action to run, or trigger it manually for an immediate sync.
+- A cached manifest may be used once while the service worker refreshes it in
+  the background; reload again when testing a just-completed sync.
 - Make sure file names match the naming convention.
 
 When JavaScript or `style.css` changes:
@@ -411,11 +404,11 @@ No rows appear:
 
 Photos do not appear:
 
-- Confirm `APP_CONFIG.drivePhotos.enabled` is `true`.
-- Confirm the Apps Script URL is deployed and accessible.
-- Confirm Drive folder permissions allow public viewing.
+- Confirm `APP_CONFIG.localPhotos.enabled` is `true`.
+- Confirm both `photos/index.json` and `photos/by-mosque/` were published.
+- Confirm the latest photo-sync Action completed successfully.
 - Confirm photo file names match mosque names.
-- Check whether localStorage has an old photo list; clear site data for immediate retesting.
+- Reload once more if the service worker just refreshed a cached manifest.
 
 Only the main photo appears, inside/outside photos are missing:
 
@@ -424,26 +417,8 @@ Only the main photo appears, inside/outside photos are missing:
   (no trailing sequence number), but `parseNamedPhoto()` originally required
   `_I_#` / `_O_#`, so those files were silently skipped. Fixed 2026-07-01 --
   the parser now accepts both forms and auto-numbers files with no explicit
-  sequence (`assignAutoSequences()` in `js/drive-photos.js`, mirrored in
-  `scripts/sync-photos.mjs`). If this regresses, check that fix is still in
-  place before assuming it's a content gap again.
-
-All photos stopped appearing mid-session (not just for one mosque, and not
-tied to any particular photo's naming):
-
-- Fixed 2026-07-01 -- `loadDrivePhotoIndex()` in `js/drive-photos.js` caches
-  its merged photo index in a module-level variable so it's only built once
-  per page load. The cache-hit check used to be plain truthiness
-  (`if (drivePhotoIndex) {...}`), but an empty `Map` is still truthy in
-  JavaScript. If the very first attempt to build the index for the whole
-  session came back empty (e.g. a one-off Apps Script cold-start timeout or
-  any transient network failure -- both `loadLocalPhotoIndex()` and
-  `loadRemoteDrivePhotoIndex()` fail safe to an empty Map rather than
-  throwing), that empty result got locked in as "the" answer for the rest of
-  the page session: every mosque showed no photos, with no console error,
-  until a full reload. The guard now checks `drivePhotoIndex?.size`, so an
-  empty result is retried on the next photo request instead of being
-  permanently cached. If this regresses, that's the first thing to check.
+  sequence (`assignAutoSequences()` in `scripts/sync-photos.mjs`). If this
+  regresses, check that function before assuming it's a content gap.
 
 The bottom-of-page gallery repeats the same photo shown at the top:
 
@@ -457,8 +432,7 @@ No photos on a feature branch or fresh local checkout (live site is fine):
 
 - Almost certainly a stale branch, not a code bug. `photos/index.json` and the
   `photos/` folder are committed to `1.1` by the nightly sync Action; a branch
-  cut before the latest sync has the empty stub and falls back to the live
-  Apps Script + Drive path, which is slow (2–10s listing) and flaky. Fix:
+  cut before the latest sync can be missing the generated manifests. Fix:
   `git merge 1.1` into the branch. Verify with
   `python3 -c "import json; print(len(json.load(open('photos/index.json'))['photos']))"`
   — should print ~960, not 0.

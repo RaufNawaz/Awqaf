@@ -1,9 +1,9 @@
-import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=shrine-links-20260731";
+import { APP_CONFIG, buildPrimaryCsvUrl } from "./config.js?v=photo-startup-20260920";
 import {
   findDrivePhotosForRow,
   loadDrivePhotosForRow as fetchDrivePhotosForRow,
   loadDrivePhotoIndex,
-} from "./drive-photos.js?v=shrine-links-20260731";
+} from "./drive-photos.js?v=photo-startup-20260920";
 import {
   cleanCellValue,
   cleanYearLikeValue,
@@ -19,7 +19,7 @@ import {
   parseRuralUrbanLabel,
   parseWomenPrayerLabel,
   pickFirstValue,
-} from "./utils.js?v=shrine-links-20260731";
+} from "./utils.js?v=photo-startup-20260920";
 
 const DEFAULT_PHOTO_THUMBNAIL_SIZES = {
   sidebar: "w360",
@@ -196,12 +196,15 @@ function normalizeRow(rawRow, index) {
 
 export async function loadDrivePhotosForRows(rows) {
   const drivePhotoIndex = await loadDrivePhotoIndex();
+  if (!drivePhotoIndex.size) {
+    return false;
+  }
 
   rows.forEach((row) => {
     row.drivePhotos = findDrivePhotosForRow(row, drivePhotoIndex);
   });
 
-  return rows;
+  return true;
 }
 
 export async function loadDrivePhotosForRow(row) {

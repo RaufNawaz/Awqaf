@@ -1,6 +1,7 @@
 const DRIVE_THUMBNAIL_CACHE = "awqaf-drive-thumbnails-v2";
 const LOCAL_PHOTOS_CACHE = "awqaf-local-photos-v1";
-const PHOTO_MANIFEST_CACHE = "awqaf-photo-manifest-v1";
+const PHOTO_MANIFEST_CACHE = "awqaf-photo-manifest-v2";
+const OLD_PHOTO_MANIFEST_CACHE = "awqaf-photo-manifest-v1";
 const MAX_DRIVE_THUMBNAILS = 180;
 const MAX_LOCAL_PHOTOS = 400;
 
@@ -20,7 +21,11 @@ function isLocalPhotoManifestRequest(request) {
 
   try {
     const url = new URL(request.url);
-    return url.origin === self.location.origin && url.pathname.endsWith("/photos/index.json");
+    return (
+      url.origin === self.location.origin &&
+      url.pathname.includes("/photos/") &&
+      url.pathname.endsWith(".json")
+    );
   } catch {
     return false;
   }
@@ -71,22 +76,22 @@ async function cacheFirst(event, cacheName, maxEntries) {
   return response;
 }
 
-async function networkFirst(event, cacheName) {
+async function staleWhileRevalidate(event, cacheName) {
   const cache = await caches.open(cacheName);
-
-  try {
-    const response = await fetch(event.request, { cache: "no-store" });
+  const cached = await cache.match(event.request, { ignoreVary: true });
+  const networkRequest = fetch(event.request).then((response) => {
     if (response && response.ok) {
       event.waitUntil(cache.put(event.request, response.clone()).catch(() => {}));
     }
     return response;
-  } catch (error) {
-    const cached = await cache.match(event.request, { ignoreVary: true });
-    if (cached) {
-      return cached;
-    }
-    throw error;
+  });
+
+  if (cached) {
+    event.waitUntil(networkRequest.catch(() => {}));
+    return cached;
   }
+
+  return networkRequest;
 }
 
 self.addEventListener("install", () => {
@@ -94,7 +99,9 @@ self.addEventListener("install", () => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([self.clients.claim(), caches.delete(OLD_PHOTO_MANIFEST_CACHE)]),
+  );
 });
 
 self.addEventListener("fetch", (event) => {
@@ -104,7 +111,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isLocalPhotoManifestRequest(event.request)) {
-    event.respondWith(networkFirst(event, PHOTO_MANIFEST_CACHE));
+    event.respondWith(staleWhileRevalidate(event, PHOTO_MANIFEST_CACHE));
     return;
   }
 

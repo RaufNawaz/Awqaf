@@ -9,7 +9,7 @@
 // No other code changes are needed: the map drawer and the mosque detail page
 // both pick the link up automatically.
 
-import { normalizeSearchText } from "./utils.js?v=shrine-links-20260731";
+import { normalizeSearchText } from "./utils.js?v=photo-startup-20260920";
 
 const SHRINE_SITE_BASE = "https://raufnawaz.github.io/Sufi-Shrines";
 

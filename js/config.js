@@ -14,13 +14,7 @@ export const APP_CONFIG = {
   },
   drivePhotos: {
     enabled: true,
-    folderId: "15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo",
-    // Free workaround: deploy the Apps Script from README.md and paste its JSON URL here.
-    appsScriptUrl:
-      "https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQiDLGl7D1CHZw5lNOslN7cveZmy08l_FVVJv_xetYhyUgZohHMaKwpKKTGwvbB4puELDAmigTkDp-gGjYglTOvkMxn2PrIRC_euJwvjaL6wWFFli08TD3pZJ4Zx_aRCwipuGtHrsvLejlMTz7kRYuOKIu_w7Ux00YpuF9D2OBWoO7BQa_GhdGeeX-vdoQFGibwNFrABMcEVPujYGY13YcQhF22nThKA4dnsRxvRPbrwLrK0eQ972WEg3sy6OYMk_6ogz1OakZp6NAkVKVQ6_AA5aFTdg&lib=MpWdW5Xnf2iro3L6DlvNqqeSOIo3kG7Kb",
-    // Optional Google Drive API fallback. Restrict this key to the Google Drive API
-    // and your website domain in Google Cloud if you choose to use it.
-    apiKey: "",
+    // Display sizes for legacy photo URLs that still come from the live CSV.
     thumbnailSize: "w1200",
     thumbnailSizes: {
       sidebar: "w360",
@@ -29,13 +23,13 @@ export const APP_CONFIG = {
       hero: "w1200",
     },
   },
-  // Repo-served photo thumbnails synced from Drive by
-  // .github/workflows/sync-photos.yml (see scripts/sync-photos.mjs). The site
-  // prefers these same-origin files and only falls back to live Drive
-  // thumbnails above for photos the sync hasn't picked up yet.
+  // Repo-served photo thumbnails and manifests are refreshed nightly from
+  // Drive by .github/workflows/sync-photos.yml. Visitors never list Drive or
+  // call the Apps Script directly.
   localPhotos: {
     enabled: true,
     manifestUrl: "./photos/index.json",
+    manifestDirectory: "./photos/by-mosque",
   },
   map: {
     defaultCenter: [30.3753, 69.3451],

@@ -19,9 +19,11 @@ This is a static single-page website inspired by the look and feel of the Sufi S
 |   `-- utils.js
 |-- photos/
 |   |-- index.json
+|   |-- by-mosque/*.json
 |   `-- <mosque-slug>/*.webp
 |-- scripts/
-|   `-- sync-photos.mjs
+|   |-- sync-photos.mjs
+|   `-- write-photo-manifests.mjs
 |-- index.html
 |-- mosque.html
 |-- sw.js
@@ -83,15 +85,18 @@ If you have a public Google Sheet:
 
 The current site uses the live `publishedCsvUrl`; there is no bundled offline CSV fallback.
 
-## Google Drive photo folder
+## Google Drive photo source
 
-The site can load mosque photos directly from this Google Drive folder:
+Staff upload mosque photos to this Google Drive folder:
 
 ```text
 https://drive.google.com/drive/folders/15Wj0hXX2HjQvyYDvx4I-XAtClrGSDElo
 ```
 
-There is no manual download step. The browser asks the Apps Script for the Drive folder file list, caches that metadata in `localStorage`, builds an in-memory photo index once per page session, and attaches matching images to mosque rows in the background. The images themselves use right-sized Google Drive thumbnail URLs and a small service worker cache so switching between mosques does not repeatedly reload the same thumbnails.
+There is no manual download step. A nightly GitHub Action asks the Apps Script
+for the Drive file list, creates right-sized WebP files, and commits them with
+static manifests. Visitor browsers request only those same-origin files; they
+never call Apps Script or list the Drive folder.
 
 Photo file names should use this format:
 
@@ -130,9 +135,11 @@ MosqueName_2.jpg
 
 For each mosque, the site shows the new `_M` / `_I_#` / `_O_#` photos first. Older numbered files are still accepted as fallback gallery photos, so a mixed set like `MosqueName_M.jpg` plus `MosqueName_1.jpg` will still display.
 
-### Free setup with Apps Script
+### CI-only Apps Script listing
 
-This is the recommended free workaround. It avoids a Google Cloud API key in the website.
+The photo-sync Action uses an Apps Script endpoint to list the Drive folder.
+This endpoint is build infrastructure only and is not shipped in browser
+configuration or requested by site visitors.
 
 1. Go to https://script.google.com/ and create a new project.
 2. Paste this code:
@@ -235,20 +242,16 @@ function normalizePhotoSearchText(value) {
 5. Set **Execute as** to **Me**.
 6. Set **Who has access** to **Anyone**.
 7. Deploy, authorize it once, then copy the `/exec` web app URL.
-8. Paste that URL into `APP_CONFIG.drivePhotos.appsScriptUrl` in `js/config.js`.
+8. Paste that URL into `APPS_SCRIPT_URL` in `scripts/sync-photos.mjs`.
 
-After that, you only upload new photos to the Drive folder. The website asks the Apps Script for the folder file list, caches the list briefly, then loads size-specific image thumbnails from Drive.
+After that, staff only upload new photos to the Drive folder. The nightly Action
+uses the endpoint and publishes the generated thumbnails and manifests.
 
-### Optional Google Drive API setup
+### No browser Drive API fallback
 
-The Google Drive API itself is available at no additional cost, but it uses Google Cloud API keys and quotas. To use that route instead:
-
-1. Share the Drive folder so anyone with the link can view it. Uploaded files should inherit that access.
-2. In Google Cloud, enable the Google Drive API.
-3. Create an API key, restrict it to the Google Drive API and your website domain.
-4. Paste the key into `APP_CONFIG.drivePhotos.apiKey` in `js/config.js`.
-
-If both `appsScriptUrl` and `apiKey` are blank, or Drive cannot be listed, the site falls back to any photo URLs already present in the live CSV.
+The deployed site intentionally has no Apps Script URL or Google Drive API key.
+If a synced photo is unavailable, it can still use legacy photo URLs already
+present in the published CSV.
 
 ## Local photo sync (faster photos, same Drive workflow)
 
@@ -262,6 +265,7 @@ photos into the repo as pre-sized, same-origin WebP files:
 scripts/sync-photos.mjs             Diffs Drive against photos/index.json, downloads
                                      changed images, generates WebP thumbnails
 photos/index.json                   Manifest: source of truth for what has been synced
+photos/by-mosque/*.json             Small manifests used for the selected mosque
 photos/<mosque-slug>/*.webp         Generated thumbnails (small ~w400, large ~w1200)
 ```
 
@@ -270,10 +274,10 @@ the `_M` / `_I_#` / `_O_#` naming convention above. The Action periodically
 diffs the Drive folder against `photos/index.json` (by Drive file id and
 `modifiedTime`) and commits only what changed, so commits stay small.
 
-The site (`js/drive-photos.js`) prefers these local files and only falls back
-to a live Drive thumbnail for a photo the sync hasn't picked up yet. Nothing
-about the matching or rendering code needs to know which source a photo came
-from.
+The site (`js/drive-photos.js`) loads the selected mosque's small manifest
+immediately, then warms the full index during idle time for later selections.
+The service worker returns cached manifests immediately and refreshes them in
+the background.
 
 Two constraints this relies on, since the site deploys to GitHub Pages:
 
@@ -294,6 +298,7 @@ workflow" button in the GitHub Actions tab, or run
 
 - Marker clicks and result clicks open the in-page detail drawer.
 - Each mosque also has a detail page at `mosque.html?id=...`.
-- `sw.js` caches Drive thumbnail responses, local `photos/` thumbnails, and the `photos/index.json` manifest for faster repeat visits and shrine switching. It works on `http://localhost` and HTTPS deployments, not when opening files directly from disk.
-- The Google Drive API key is visible in browser source, so restrict it in Google Cloud.
+- `sw.js` caches legacy Drive thumbnail responses, local `photos/` thumbnails,
+  and both full and per-mosque manifests. It works on `http://localhost` and
+  HTTPS deployments, not when opening files directly from disk.
 - Old local images, offline CSV snapshots, and import scripts are kept under ignored `junk/` storage only.

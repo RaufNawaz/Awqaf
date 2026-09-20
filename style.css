@@ -1613,7 +1613,7 @@ input:focus-visible {
   }
 }
 
-/* --- Mobile hardening (v=shrine-links-20260731): prevent horizontal scroll on
+/* --- Mobile hardening (v=photo-startup-20260920): prevent horizontal scroll on
    phones. Scoped to the mosque detail page. --- */
 .mosque-body {
   overflow-x: clip;
